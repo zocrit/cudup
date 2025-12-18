@@ -1,0 +1,172 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  MINISIGN_VERSION: "0.12"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            cross: false
+          - target: x86_64-unknown-linux-musl
+            cross: false
+          - target: aarch64-unknown-linux-gnu
+            cross: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ !matrix.cross && matrix.target || '' }}
+
+      - name: Install musl tools
+        if: contains(matrix.target, 'musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Set up Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross
+        if: matrix.cross
+        uses: taiki-e/install-action@cross
+
+      - name: Build (native)
+        if: ${{ !matrix.cross }}
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Build (cross)
+        if: matrix.cross
+        run: cross build --release --locked --target ${{ matrix.target }}
+
+      - name: Install cross-strip tools
+        if: matrix.cross
+        run: sudo apt-get update && sudo apt-get install -y binutils-aarch64-linux-gnu
+
+      - name: Strip binary
+        run: |
+          BINARY="target/${{ matrix.target }}/release/cudup"
+          echo "Before strip: $(ls -lh $BINARY | awk '{print $5}')"
+          if [[ "${{ matrix.target }}" == aarch64-* ]]; then
+            aarch64-linux-gnu-strip "$BINARY"
+          else
+            strip "$BINARY"
+          fi
+          echo "After strip:  $(ls -lh $BINARY | awk '{print $5}')"
+
+      - name: Rename binary
+        run: cp target/${{ matrix.target }}/release/cudup cudup-${{ matrix.target }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cudup-${{ matrix.target }}
+          path: cudup-${{ matrix.target }}
+          if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          find artifacts -type f -name 'cudup-*' -exec mv {} release/ \;
+          echo "Downloaded artifacts:"
+          ls -la release/
+
+          # Verify we have the expected binaries
+          for target in x86_64-unknown-linux-gnu x86_64-unknown-linux-musl aarch64-unknown-linux-gnu; do
+            if [ ! -f "release/cudup-$target" ]; then
+              echo "ERROR: Missing binary for $target"
+              exit 1
+            fi
+          done
+
+      - name: Install minisign
+        run: |
+          wget -q "https://github.com/jedisct1/minisign/releases/download/${MINISIGN_VERSION}/minisign-${MINISIGN_VERSION}-linux.tar.gz"
+          tar xf "minisign-${MINISIGN_VERSION}-linux.tar.gz"
+          sudo mv minisign-linux/x86_64/minisign /usr/local/bin/
+          minisign -v
+
+      - name: Sign binaries and generate checksums
+        working-directory: release
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+        run: |
+          set -euo pipefail
+
+          # Validate secret key is present
+          if [ -z "$MINISIGN_SECRET_KEY" ]; then
+            echo "ERROR: MINISIGN_SECRET_KEY is not set"
+            exit 1
+          fi
+
+          # Write secret key to temp file with cleanup trap
+          echo "$MINISIGN_SECRET_KEY" > minisign.key
+          trap 'rm -f minisign.key' EXIT
+
+          # Sign each binary (pipe empty password for key with no password)
+          for binary in cudup-x86_64-* cudup-aarch64-*; do
+            [ -f "$binary" ] || continue
+            echo "Signing $binary..."
+            echo "" | minisign -S -s minisign.key -m "$binary" -t "cudup release signature"
+          done
+
+          # Generate SHA256 checksums for binaries and signatures
+          sha256sum cudup-x86_64-* cudup-aarch64-* > cudup-checksums.sha256
+          echo "Checksums:"
+          cat cudup-checksums.sha256
+
+          # Sign the checksums file
+          echo "" | minisign -S -s minisign.key -m cudup-checksums.sha256 -t "cudup checksums signature"
+
+          echo "Release files:"
+          ls -la
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: cudup ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+          generate_release_notes: true
+          files: |
+            release/cudup-x86_64-*
+            release/cudup-aarch64-*
+            release/cudup-checksums.sha256
+            release/cudup-checksums.sha256.sig
