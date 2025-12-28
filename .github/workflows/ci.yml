@@ -1,0 +1,80 @@
+# CI workflow for cudup
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  fmt:
+    name: Check formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Rust
+        uses: actions/setup-rust@v2
+        with:
+          rust-version: stable
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/x86_64-unknown-linux-gnu
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-x86_64-unknown-linux-gnu
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: Lint with clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Rust
+        uses: actions/setup-rust@v2
+        with:
+          rust-version: stable
+          targets: x86_64-unknown-linux-gnu
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/x86_64-unknown-linux-gnu
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-x86_64-unknown-linux-gnu
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: cargo clippy
+        run: cargo clippy --target x86_64-unknown-linux-gnu --all-targets --all-features -- -D warnings
+
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    needs: [fmt, clippy]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Rust
+        uses: actions/setup-rust@v2
+        with:
+          rust-version: stable
+          targets: x86_64-unknown-linux-gnu
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/x86_64-unknown-linux-gnu
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-x86_64-unknown-linux-gnu
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Build (release, x86_64-unknown-linux-gnu)
+        run: cargo build --release --target x86_64-unknown-linux-gnu --verbose
+      - name: Run tests (release, x86_64-unknown-linux-gnu)
+        run: cargo test --release --target x86_64-unknown-linux-gnu --all --verbose
