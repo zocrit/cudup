@@ -239,6 +239,49 @@ src/
 
 ## Testing
 
+### Test Types
+
+We use two main types of tests in cudup:
+
+#### Unit Tests
+Place unit tests in the same file as the code being tested:
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_valid_version_parsing() {
+        let version = parse_version("11.8");
+        assert_eq!(version, Some(Version { major: 11, minor: 8 }));
+    }
+
+    #[test]
+    fn test_invalid_version_returns_none() {
+        assert_eq!(parse_version("invalid"), None);
+    }
+}
+```
+
+#### Integration Tests
+Integration tests go in the `tests/` directory and test the CLI as a whole:
+```rust
+// tests/cli_tests.rs
+use std::process::Command;
+
+#[test]
+fn test_help_output() {
+    let output = Command::new("cargo")
+        .args(["run", "--", "--help"])
+        .output()
+        .expect("Failed to run cudup --help");
+    
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("cudup"));
+}
+```
+
 ### Running Tests
 ```bash
 # Run all tests
@@ -252,7 +295,60 @@ cargo test cuda::version
 
 # Run integration tests only
 cargo test --test '*'
+
+# Run a specific test by name
+cargo test test_valid_version_parsing
 ```
+
+### Writing Tests
+
+**Best Practices:**
+
+1. **Test one thing per test** - Each test should verify one behavior
+   ```rust
+   // Good
+   #[test]
+   fn test_parses_valid_version() { /* ... */ }
+   
+   // Less good - tests multiple things
+   #[test]
+   fn test_version_parsing() { /* ... */ }
+   ```
+
+2. **Use descriptive names** - Start with `test_`, then describe the scenario
+   ```rust
+   #[test]
+   fn test_install_with_invalid_version_returns_error() { /* ... */ }
+   ```
+
+3. **Use fixtures for test data** - Place sample data in `tests/fixtures/`
+   ```
+   tests/fixtures/
+   ├── sample_config.toml
+   ├── cuda_versions.json
+   └── README.md
+   ```
+
+4. **Test both success and failure paths** - Don't just test happy paths
+   ```rust
+   #[test]
+   fn test_install_success() { /* ... */ }
+   
+   #[test]
+   fn test_install_with_missing_file_fails() { /* ... */ }
+   ```
+
+5. **Keep tests isolated** - Use temporary files/directories
+   ```rust
+   use tempfile::TempDir;
+   
+   #[test]
+   fn test_creates_config_file() {
+       let temp_dir = TempDir::new().unwrap();
+       // Test code using temp_dir
+       // Automatically cleaned up when dropped
+   }
+   ```
 
 ### Test Coverage
 
@@ -260,7 +356,19 @@ Aim for:
 - **Unit tests** for all public functions
 - **Error cases** - Test failure paths, not just happy paths
 - **Edge cases** - Empty inputs, boundary conditions, invalid data
-- **Integration tests** for CLI commands
+- **Integration tests** for CLI commands and end-to-end workflows
+
+### Continuous Integration
+
+All tests run automatically on:
+- **Push** to any branch
+- **Pull requests** before merge
+
+Tests must pass before a PR can be merged. The CI workflow checks:
+- Code formatting (`cargo fmt`)
+- Linting (`cargo clippy`)
+- Unit and integration tests (`cargo test`)
+- Release build (`cargo build --release`)
 
 ## Submitting Changes
 
