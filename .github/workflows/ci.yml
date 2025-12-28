@@ -11,6 +11,7 @@ jobs:
   fmt:
     name: Check formatting
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || !github.event.pull_request.draft
     steps:
       - uses: actions/checkout@v4
       - name: Set up Rust
@@ -31,6 +32,7 @@ jobs:
   clippy:
     name: Lint with clippy
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || !github.event.pull_request.draft
     steps:
       - uses: actions/checkout@v4
       - name: Set up Rust
@@ -54,6 +56,7 @@ jobs:
     name: Build and Test
     runs-on: ubuntu-latest
     needs: [fmt, clippy]
+    if: github.event_name == 'push' || !github.event.pull_request.draft
     steps:
       - uses: actions/checkout@v4
       - name: Set up Rust
