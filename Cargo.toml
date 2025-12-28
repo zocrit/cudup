@@ -1,0 +1,12 @@
+[package]
+name = "cudup"
+version = "0.1.0"
+authors = ["Cristian Zoz <cristian@zoz.dev>"]
+license = "MIT"
+repository = "https://github.com/ZoCrit/cudup"
+description = "CUDA version manager - easily install and switch between CUDA versions"
+keywords = ["cuda", "version-manager", "gpu", "nvidia", "ml"]
+categories = ["development-tools", "command-line-utilities"]
+edition = "2024"
+
+[dependencies]
