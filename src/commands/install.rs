@@ -1,3 +1,6 @@
+use crate::cuda::discover;
+
 pub fn install(version: &Option<String>) {
-    println!("'cudup install' was used, version is : {version:?}")
+    discover::fetch_available_cuda_versions();
+    println!("Available CUDA versions: {:?}", ());
 }

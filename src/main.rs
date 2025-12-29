@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 
 mod commands;
+mod cuda;
 
 #[derive(Parser)]
 #[command(name = "cudup", author, version, about, long_about = None)]
