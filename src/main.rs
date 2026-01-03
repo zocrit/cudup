@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 mod commands;
@@ -13,12 +14,16 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Install { version: Option<String> },
+    List {},
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Install { version } => commands::install(version),
+        Commands::Install { version } => commands::install(version)?,
+        Commands::List {} => commands::list_available_versions()?,
     }
+
+    Ok(())
 }
