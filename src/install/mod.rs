@@ -42,14 +42,13 @@ pub async fn find_compatible_cudnn(cuda_version: &str) -> Result<Option<(String,
         };
 
         // Check if this cuDNN supports our CUDA major version
-        if let Some(cudnn_pkg) = metadata.get_package("cudnn") {
-            if let Some(variants) = &cudnn_pkg.cuda_variant {
-                if variants.contains(&cuda_major.to_string()) {
-                    // Found a compatible version
-                    let cuda_variant = format!("cuda{}", cuda_major);
-                    return Ok(Some((cudnn_version.clone(), cuda_variant)));
-                }
-            }
+        if let Some(cudnn_pkg) = metadata.get_package("cudnn")
+            && let Some(variants) = &cudnn_pkg.cuda_variant
+            && variants.contains(&cuda_major.to_string())
+        {
+            // Found a compatible version
+            let cuda_variant = format!("cuda{}", cuda_major);
+            return Ok(Some((cudnn_version.clone(), cuda_variant)));
         }
     }
 
