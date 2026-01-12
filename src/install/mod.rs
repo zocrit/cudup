@@ -6,10 +6,10 @@ use tokio::io::AsyncWriteExt;
 
 use crate::cache;
 use crate::cuda::discover::{
-    BaseDownloadUrls, fetch_available_cuda_versions, fetch_available_cudnn_versions,
+    BaseDownloadUrls, fetch_available_cuda_versions, fetch_compatible_cudnn_versions,
     fetch_cuda_version_metadata, fetch_cudnn_version_metadata,
 };
-use crate::cuda::metadata::{CudaReleaseMetadata, DownloadInfo, PlatformInfo};
+use crate::cuda::metadata::{CudaReleaseMetadata, PlatformInfo};
 
 const TARGET_PLATFORM: &str = "linux-x86_64";
 
@@ -32,24 +32,12 @@ pub async fn find_compatible_cudnn(cuda_version: &str) -> Result<Option<(String,
         .next()
         .context("Invalid CUDA version format")?;
 
-    let cudnn_versions = fetch_available_cudnn_versions().await?;
+    let compatible_versions = fetch_compatible_cudnn_versions(cuda_version).await?;
 
-    // Iterate from newest to oldest cuDNN version
-    for cudnn_version in cudnn_versions.iter().rev() {
-        let metadata = match fetch_cudnn_version_metadata(cudnn_version).await {
-            Ok(m) => m,
-            Err(_) => continue, // Skip versions we can't fetch
-        };
-
-        // Check if this cuDNN supports our CUDA major version
-        if let Some(cudnn_pkg) = metadata.get_package("cudnn")
-            && let Some(variants) = &cudnn_pkg.cuda_variant
-            && variants.contains(&cuda_major.to_string())
-        {
-            // Found a compatible version
-            let cuda_variant = format!("cuda{}", cuda_major);
-            return Ok(Some((cudnn_version.clone(), cuda_variant)));
-        }
+    // Return the newest compatible version (last in the sorted set)
+    if let Some(cudnn_version) = compatible_versions.iter().next_back() {
+        let cuda_variant = format!("cuda{}", cuda_major);
+        return Ok(Some((cudnn_version.clone(), cuda_variant)));
     }
 
     Ok(None)
@@ -337,7 +325,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
         let archive_name = task
             .relative_path
             .split('/')
-            .last()
+            .next_back()
             .unwrap_or("archive.tar.xz");
         let archive_path = downloads.join(archive_name);
 
@@ -369,7 +357,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
         let archive_name = task
             .relative_path
             .split('/')
-            .last()
+            .next_back()
             .unwrap_or("cudnn.tar.xz");
         let archive_path = downloads.join(archive_name);
 

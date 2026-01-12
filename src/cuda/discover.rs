@@ -147,6 +147,46 @@ pub async fn fetch_cuda_version_metadata_with_options(
     Ok(metadata)
 }
 
+/// Fetches cuDNN versions compatible with a specific CUDA version
+///
+/// Returns a map of cuDNN version to its corresponding CUDA variant string (e.g., "cuda12")
+/// Only returns cuDNN versions that support the given CUDA major version
+pub async fn fetch_compatible_cudnn_versions(cuda_version: &str) -> Result<BTreeSet<String>> {
+    fetch_compatible_cudnn_versions_with_options(cuda_version, false).await
+}
+
+/// Fetches compatible cuDNN versions with option to force refresh
+pub async fn fetch_compatible_cudnn_versions_with_options(
+    cuda_version: &str,
+    force_refresh: bool,
+) -> Result<BTreeSet<String>> {
+    let cuda_major = cuda_version
+        .split('.')
+        .next()
+        .context("Invalid CUDA version format")?;
+
+    let all_cudnn_versions = fetch_available_cudnn_versions_with_options(force_refresh).await?;
+    let mut compatible_versions = BTreeSet::new();
+
+    for cudnn_version in &all_cudnn_versions {
+        let metadata =
+            match fetch_cudnn_version_metadata_with_options(cudnn_version, force_refresh).await {
+                Ok(m) => m,
+                Err(_) => continue, // Skip versions we can't fetch
+            };
+
+        // Check if this cuDNN supports our CUDA major version
+        if let Some(cudnn_pkg) = metadata.get_package("cudnn")
+            && let Some(variants) = &cudnn_pkg.cuda_variant
+            && variants.contains(&cuda_major.to_string())
+        {
+            compatible_versions.insert(cudnn_version.clone());
+        }
+    }
+
+    Ok(compatible_versions)
+}
+
 /// Fetches the detailed metadata JSON for a specific cuDNN version
 /// Uses cache if available and not expired (7 day TTL)
 pub async fn fetch_cudnn_version_metadata(version: &str) -> Result<CudaReleaseMetadata> {
