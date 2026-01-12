@@ -17,6 +17,7 @@ struct Cli {
 enum Commands {
     Install { version: Option<String> },
     List {},
+    Use { version: Option<String> },
 }
 
 #[tokio::main]
@@ -26,6 +27,7 @@ async fn main() -> Result<()> {
     match &cli.command {
         Commands::Install { version } => commands::install(version).await?,
         Commands::List {} => commands::list_available_versions().await?,
+        Commands::Use { version } => commands::use_version(version).await?,
     }
 
     Ok(())
