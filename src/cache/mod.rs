@@ -270,3 +270,124 @@ pub struct CacheStats {
     pub cuda_metadata_count: usize,
     pub cudnn_metadata_count: usize,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cudup_home() {
+        let home = cudup_home().unwrap();
+        assert!(home.to_string_lossy().contains(".cudup"));
+    }
+
+    #[test]
+    fn test_cache_dir() {
+        let cache = cache_dir().unwrap();
+        assert!(cache.to_string_lossy().contains(".cudup"));
+        assert!(cache.to_string_lossy().contains("cache"));
+    }
+
+    #[test]
+    fn test_versions_dir() {
+        let versions = versions_dir().unwrap();
+        assert!(versions.to_string_lossy().contains(".cudup"));
+        assert!(versions.to_string_lossy().contains("versions"));
+    }
+
+    #[test]
+    fn test_now_timestamp() {
+        let ts = now_timestamp();
+        // Timestamp should be reasonable (after 2020)
+        assert!(ts > 1577836800); // 2020-01-01
+    }
+
+    #[test]
+    fn test_is_cache_valid_fresh() {
+        let now = now_timestamp();
+        // Cache from 1 hour ago with 24 hour TTL should be valid
+        let cached_at = now - 3600;
+        assert!(is_cache_valid(cached_at, Duration::from_secs(24 * 60 * 60)));
+    }
+
+    #[test]
+    fn test_is_cache_valid_expired() {
+        let now = now_timestamp();
+        // Cache from 25 hours ago with 24 hour TTL should be invalid
+        let cached_at = now - (25 * 60 * 60);
+        assert!(!is_cache_valid(
+            cached_at,
+            Duration::from_secs(24 * 60 * 60)
+        ));
+    }
+
+    #[test]
+    fn test_is_cache_valid_edge() {
+        let now = now_timestamp();
+        // Cache exactly at TTL boundary
+        let ttl = Duration::from_secs(100);
+        let cached_at = now - 99;
+        assert!(is_cache_valid(cached_at, ttl));
+
+        let cached_at = now - 100;
+        assert!(!is_cache_valid(cached_at, ttl));
+    }
+
+    #[test]
+    fn test_cached_version_list_serialization() {
+        let versions: BTreeSet<String> = ["12.0.0", "12.1.0", "12.2.0"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        let cached = CachedVersionList {
+            versions: versions.clone(),
+            cached_at: 1234567890,
+        };
+
+        let json = serde_json::to_string(&cached).unwrap();
+        let deserialized: CachedVersionList = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.versions, versions);
+        assert_eq!(deserialized.cached_at, 1234567890);
+    }
+
+    #[tokio::test]
+    async fn test_save_and_load_cuda_versions() {
+        // Ensure cache dirs exist
+        ensure_cache_dirs().await.unwrap();
+
+        let versions: BTreeSet<String> =
+            ["12.0.0", "12.1.0"].iter().map(|s| s.to_string()).collect();
+
+        // Save versions
+        save_cuda_versions(&versions).await.unwrap();
+
+        // Load without force refresh
+        let loaded = load_cached_cuda_versions(false).await.unwrap();
+        assert!(loaded.is_some());
+        assert_eq!(loaded.unwrap(), versions);
+    }
+
+    #[tokio::test]
+    async fn test_force_refresh_bypasses_cache() {
+        ensure_cache_dirs().await.unwrap();
+
+        let versions: BTreeSet<String> = ["11.0.0"].iter().map(|s| s.to_string()).collect();
+        save_cuda_versions(&versions).await.unwrap();
+
+        // Force refresh should return None
+        let loaded = load_cached_cuda_versions(true).await.unwrap();
+        assert!(loaded.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_ensure_cache_dirs_creates_structure() {
+        ensure_cache_dirs().await.unwrap();
+
+        let cache = cache_dir().unwrap();
+        assert!(cache.exists());
+        assert!(cache.join("cuda").exists());
+        assert!(cache.join("cudnn").exists());
+    }
+}

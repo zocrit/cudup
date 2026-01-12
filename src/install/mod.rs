@@ -383,3 +383,246 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cuda::metadata::CudaReleaseMetadata;
+
+    fn sample_cuda_metadata() -> CudaReleaseMetadata {
+        serde_json::from_str(
+            r#"{
+                "release_date": "2024-06-01",
+                "cuda_cccl": {
+                    "name": "CUDA C++ Core Libraries",
+                    "license": "NVIDIA Software License",
+                    "version": "12.4.127",
+                    "linux-x86_64": {
+                        "relative_path": "cuda_cccl/linux-x86_64/cuda_cccl-linux-x86_64-12.4.127-archive.tar.xz",
+                        "sha256": "abc123def456789012345678901234567890123456789012345678901234abcd",
+                        "md5": "abc123def456",
+                        "size": "1234567"
+                    }
+                },
+                "cuda_cudart": {
+                    "name": "CUDA Runtime",
+                    "license": "NVIDIA Software License",
+                    "version": "12.4.127",
+                    "linux-x86_64": {
+                        "relative_path": "cuda_cudart/linux-x86_64/cuda_cudart-linux-x86_64-12.4.127-archive.tar.xz",
+                        "sha256": "789012345678901234567890123456789012345678901234567890123456789a",
+                        "md5": "789012345678",
+                        "size": "3456789"
+                    }
+                },
+                "release_notes": {
+                    "name": "Release Notes",
+                    "license": "NVIDIA Software License",
+                    "version": "12.4.1",
+                    "linux-x86_64": {
+                        "relative_path": "release_notes/linux-x86_64/release_notes-linux-x86_64-12.4.1-archive.tar.xz",
+                        "sha256": "releasenotes123456789012345678901234567890123456789012345678901234",
+                        "md5": "releasenotes12",
+                        "size": "12345"
+                    }
+                }
+            }"#,
+        )
+        .unwrap()
+    }
+
+    fn sample_cudnn_metadata() -> CudaReleaseMetadata {
+        serde_json::from_str(
+            r#"{
+                "release_date": "2024-05-15",
+                "release_label": "9.1.0",
+                "release_product": "cudnn",
+                "cudnn": {
+                    "name": "cuDNN",
+                    "license": "NVIDIA cuDNN Software License",
+                    "license_path": "cudnn/LICENSE.txt",
+                    "version": "9.1.0.70",
+                    "cuda_variant": ["11", "12"],
+                    "linux-x86_64": {
+                        "cuda11": {
+                            "relative_path": "cudnn/linux-x86_64/cudnn-linux-x86_64-9.1.0.70_cuda11-archive.tar.xz",
+                            "sha256": "cudnn11sha256hash012345678901234567890123456789012345678901234567",
+                            "md5": "cudnn11md5hash",
+                            "size": "987654321"
+                        },
+                        "cuda12": {
+                            "relative_path": "cudnn/linux-x86_64/cudnn-linux-x86_64-9.1.0.70_cuda12-archive.tar.xz",
+                            "sha256": "cudnn12sha256hash012345678901234567890123456789012345678901234567",
+                            "md5": "cudnn12md5hash",
+                            "size": "987654322"
+                        }
+                    }
+                }
+            }"#,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn test_format_size_bytes() {
+        assert_eq!(format_size(0), "0 B");
+        assert_eq!(format_size(512), "512 B");
+        assert_eq!(format_size(1023), "1023 B");
+    }
+
+    #[test]
+    fn test_format_size_kilobytes() {
+        assert_eq!(format_size(1024), "1.00 KB");
+        assert_eq!(format_size(2048), "2.00 KB");
+        assert_eq!(format_size(1536), "1.50 KB");
+    }
+
+    #[test]
+    fn test_format_size_megabytes() {
+        assert_eq!(format_size(1024 * 1024), "1.00 MB");
+        assert_eq!(format_size(1024 * 1024 * 100), "100.00 MB");
+        assert_eq!(format_size(1024 * 1024 + 512 * 1024), "1.50 MB");
+    }
+
+    #[test]
+    fn test_format_size_gigabytes() {
+        assert_eq!(format_size(1024 * 1024 * 1024), "1.00 GB");
+        assert_eq!(format_size(1024 * 1024 * 1024 * 5), "5.00 GB");
+    }
+
+    #[test]
+    fn test_collect_cuda_download_tasks() {
+        let metadata = sample_cuda_metadata();
+        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1").unwrap();
+
+        // Should have 2 packages (cuda_cccl and cuda_cudart), release_label is skipped
+        assert_eq!(tasks.len(), 2);
+
+        let cccl_task = tasks.iter().find(|t| t.package_name == "cuda_cccl");
+        assert!(cccl_task.is_some());
+        let cccl = cccl_task.unwrap();
+        assert_eq!(cccl.size, 1234567);
+        assert!(cccl.url.contains("cuda_cccl-linux-x86_64"));
+        assert!(!cccl.sha256.is_empty());
+    }
+
+    #[test]
+    fn test_collect_cuda_download_tasks_skips_release_packages() {
+        let metadata = sample_cuda_metadata();
+        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1").unwrap();
+
+        // release_label package should be skipped
+        let release_task = tasks
+            .iter()
+            .find(|t| t.package_name.starts_with("release_"));
+        assert!(release_task.is_none());
+    }
+
+    #[test]
+    fn test_collect_cudnn_download_task_cuda12() {
+        let metadata = sample_cudnn_metadata();
+        let task = collect_cudnn_download_task(&metadata, "cuda12").unwrap();
+
+        assert!(task.is_some());
+        let task = task.unwrap();
+        assert_eq!(task.package_name, "cudnn");
+        assert_eq!(task.size, 987654322);
+        assert!(task.url.contains("cuda12-archive"));
+        assert!(task.relative_path.contains("cuda12"));
+    }
+
+    #[test]
+    fn test_collect_cudnn_download_task_cuda11() {
+        let metadata = sample_cudnn_metadata();
+        let task = collect_cudnn_download_task(&metadata, "cuda11").unwrap();
+
+        assert!(task.is_some());
+        let task = task.unwrap();
+        assert!(task.url.contains("cuda11-archive"));
+    }
+
+    #[test]
+    fn test_collect_cudnn_download_task_invalid_variant() {
+        let metadata = sample_cudnn_metadata();
+        let task = collect_cudnn_download_task(&metadata, "cuda10").unwrap();
+
+        // CUDA 10 is not supported
+        assert!(task.is_none());
+    }
+
+    #[test]
+    fn test_collect_cudnn_download_task_no_cudnn_package() {
+        let metadata = sample_cuda_metadata(); // CUDA metadata, no cuDNN
+        let task = collect_cudnn_download_task(&metadata, "cuda12").unwrap();
+
+        assert!(task.is_none());
+    }
+
+    #[test]
+    fn test_version_install_dir() {
+        let dir = version_install_dir("12.4.1").unwrap();
+        assert!(dir.to_string_lossy().contains("12.4.1"));
+        assert!(dir.to_string_lossy().contains(".cudup"));
+        assert!(dir.to_string_lossy().contains("versions"));
+    }
+
+    #[test]
+    fn test_downloads_dir() {
+        let dir = downloads_dir().unwrap();
+        assert!(dir.to_string_lossy().contains(".cudup"));
+        assert!(dir.to_string_lossy().contains("downloads"));
+    }
+
+    #[tokio::test]
+    async fn test_verify_checksum_correct() {
+        use tokio::io::AsyncWriteExt;
+
+        let temp_dir = tempfile::tempdir().unwrap();
+        let file_path = temp_dir.path().join("test_file.txt");
+
+        // Create a test file with known content
+        let content = b"Hello, World!";
+        let mut file = tokio::fs::File::create(&file_path).await.unwrap();
+        file.write_all(content).await.unwrap();
+        file.flush().await.unwrap();
+
+        // SHA256 of "Hello, World!" is known
+        let expected_sha256 = "dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f";
+
+        let result = verify_checksum(&file_path, expected_sha256).await.unwrap();
+        assert!(result);
+    }
+
+    #[tokio::test]
+    async fn test_verify_checksum_incorrect() {
+        use tokio::io::AsyncWriteExt;
+
+        let temp_dir = tempfile::tempdir().unwrap();
+        let file_path = temp_dir.path().join("test_file.txt");
+
+        let content = b"Hello, World!";
+        let mut file = tokio::fs::File::create(&file_path).await.unwrap();
+        file.write_all(content).await.unwrap();
+        file.flush().await.unwrap();
+
+        let wrong_sha256 = "0000000000000000000000000000000000000000000000000000000000000000";
+
+        let result = verify_checksum(&file_path, wrong_sha256).await.unwrap();
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_download_task_struct() {
+        let task = DownloadTask {
+            package_name: "test_pkg".to_string(),
+            version: "1.0.0".to_string(),
+            url: "https://example.com/test.tar.xz".to_string(),
+            sha256: "abc123".to_string(),
+            size: 12345,
+            relative_path: "test/test.tar.xz".to_string(),
+        };
+
+        assert_eq!(task.package_name, "test_pkg");
+        assert_eq!(task.size, 12345);
+    }
+}

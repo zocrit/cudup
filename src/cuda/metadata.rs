@@ -96,3 +96,198 @@ impl PlatformInfo {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_cuda_metadata_json() -> &'static str {
+        r#"{
+            "release_date": "2024-06-01",
+            "cuda_cccl": {
+                "name": "CUDA C++ Core Libraries",
+                "license": "NVIDIA Software License",
+                "version": "12.4.127",
+                "linux-x86_64": {
+                    "relative_path": "cuda_cccl/linux-x86_64/cuda_cccl-linux-x86_64-12.4.127-archive.tar.xz",
+                    "sha256": "abc123",
+                    "md5": "def456",
+                    "size": "1234567"
+                }
+            },
+            "cuda_cudart": {
+                "name": "CUDA Runtime",
+                "license": "NVIDIA Software License",
+                "version": "12.4.127",
+                "linux-x86_64": {
+                    "relative_path": "cuda_cudart/linux-x86_64/cuda_cudart-linux-x86_64-12.4.127-archive.tar.xz",
+                    "sha256": "789abc",
+                    "md5": "012def",
+                    "size": "3456789"
+                },
+                "windows-x86_64": {
+                    "relative_path": "cuda_cudart/windows-x86_64/cuda_cudart-windows-x86_64-12.4.127-archive.zip",
+                    "sha256": "456xyz",
+                    "md5": "789uvw",
+                    "size": "4567890"
+                }
+            }
+        }"#
+    }
+
+    fn sample_cudnn_metadata_json() -> &'static str {
+        r#"{
+            "release_date": "2024-05-15",
+            "release_label": "9.1.0",
+            "release_product": "cudnn",
+            "cudnn": {
+                "name": "cuDNN",
+                "license": "NVIDIA cuDNN Software License",
+                "license_path": "cudnn/LICENSE.txt",
+                "version": "9.1.0.70",
+                "cuda_variant": ["11", "12"],
+                "linux-x86_64": {
+                    "cuda11": {
+                        "relative_path": "cudnn/linux-x86_64/cudnn-linux-x86_64-9.1.0.70_cuda11-archive.tar.xz",
+                        "sha256": "cudnn11hash",
+                        "md5": "cudnn11md5",
+                        "size": "987654321"
+                    },
+                    "cuda12": {
+                        "relative_path": "cudnn/linux-x86_64/cudnn-linux-x86_64-9.1.0.70_cuda12-archive.tar.xz",
+                        "sha256": "cudnn12hash",
+                        "md5": "cudnn12md5",
+                        "size": "987654322"
+                    }
+                }
+            }
+        }"#
+    }
+
+    #[test]
+    fn test_parse_cuda_metadata() {
+        let metadata: CudaReleaseMetadata =
+            serde_json::from_str(sample_cuda_metadata_json()).unwrap();
+
+        assert_eq!(metadata.release_date, Some("2024-06-01".to_string()));
+        assert!(metadata.release_label.is_none());
+        assert!(metadata.release_product.is_none());
+        assert_eq!(metadata.packages.len(), 2);
+    }
+
+    #[test]
+    fn test_get_package() {
+        let metadata: CudaReleaseMetadata =
+            serde_json::from_str(sample_cuda_metadata_json()).unwrap();
+
+        let cccl = metadata.get_package("cuda_cccl");
+        assert!(cccl.is_some());
+        assert_eq!(cccl.unwrap().name, "CUDA C++ Core Libraries");
+        assert_eq!(cccl.unwrap().version, "12.4.127");
+
+        let nonexistent = metadata.get_package("nonexistent");
+        assert!(nonexistent.is_none());
+    }
+
+    #[test]
+    fn test_package_names() {
+        let metadata: CudaReleaseMetadata =
+            serde_json::from_str(sample_cuda_metadata_json()).unwrap();
+
+        let names = metadata.package_names();
+        assert_eq!(names.len(), 2);
+        assert!(names.contains(&"cuda_cccl"));
+        assert!(names.contains(&"cuda_cudart"));
+    }
+
+    #[test]
+    fn test_get_platform_simple() {
+        let metadata: CudaReleaseMetadata =
+            serde_json::from_str(sample_cuda_metadata_json()).unwrap();
+
+        let cccl = metadata.get_package("cuda_cccl").unwrap();
+        let linux = cccl.get_platform("linux-x86_64");
+        assert!(linux.is_some());
+
+        let download_info = linux.unwrap().as_simple();
+        assert!(download_info.is_some());
+        assert!(
+            download_info
+                .unwrap()
+                .relative_path
+                .contains("cuda_cccl-linux-x86_64")
+        );
+    }
+
+    #[test]
+    fn test_available_platforms() {
+        let metadata: CudaReleaseMetadata =
+            serde_json::from_str(sample_cuda_metadata_json()).unwrap();
+
+        let cudart = metadata.get_package("cuda_cudart").unwrap();
+        let platforms = cudart.available_platforms();
+        assert_eq!(platforms.len(), 2);
+        assert!(platforms.contains(&"linux-x86_64"));
+        assert!(platforms.contains(&"windows-x86_64"));
+    }
+
+    #[test]
+    fn test_parse_cudnn_metadata() {
+        let metadata: CudaReleaseMetadata =
+            serde_json::from_str(sample_cudnn_metadata_json()).unwrap();
+
+        assert_eq!(metadata.release_date, Some("2024-05-15".to_string()));
+        assert_eq!(metadata.release_label, Some("9.1.0".to_string()));
+        assert_eq!(metadata.release_product, Some("cudnn".to_string()));
+    }
+
+    #[test]
+    fn test_cudnn_cuda_variant() {
+        let metadata: CudaReleaseMetadata =
+            serde_json::from_str(sample_cudnn_metadata_json()).unwrap();
+
+        let cudnn = metadata.get_package("cudnn").unwrap();
+        let variants = cudnn.cuda_variant.as_ref().unwrap();
+        assert_eq!(variants.len(), 2);
+        assert!(variants.contains(&"11".to_string()));
+        assert!(variants.contains(&"12".to_string()));
+    }
+
+    #[test]
+    fn test_platform_variants() {
+        let metadata: CudaReleaseMetadata =
+            serde_json::from_str(sample_cudnn_metadata_json()).unwrap();
+
+        let cudnn = metadata.get_package("cudnn").unwrap();
+        let linux = cudnn.get_platform("linux-x86_64").unwrap();
+
+        let variants = linux.variants();
+        assert_eq!(variants.len(), 2);
+        assert!(variants.contains(&"cuda11"));
+        assert!(variants.contains(&"cuda12"));
+
+        let cuda12_info = linux.get_variant("cuda12");
+        assert!(cuda12_info.is_some());
+        assert!(
+            cuda12_info
+                .unwrap()
+                .relative_path
+                .contains("cuda12-archive")
+        );
+    }
+
+    #[test]
+    fn test_download_info_fields() {
+        let metadata: CudaReleaseMetadata =
+            serde_json::from_str(sample_cuda_metadata_json()).unwrap();
+
+        let cccl = metadata.get_package("cuda_cccl").unwrap();
+        let linux = cccl.get_platform("linux-x86_64").unwrap();
+        let info = linux.as_simple().unwrap();
+
+        assert!(!info.relative_path.is_empty());
+        assert!(!info.sha256.is_empty());
+        assert!(!info.md5.is_empty());
+        assert!(!info.size.is_empty());
+    }
+}

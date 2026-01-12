@@ -231,3 +231,80 @@ pub async fn fetch_cudnn_version_metadata_with_options(
 
     Ok(metadata)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_available_versions_from_html() {
+        let html = r#"
+<!DOCTYPE html>
+<html>
+<head><title>Index of /compute/cuda/redist/</title></head>
+<body>
+<h1>Index of /compute/cuda/redist/</h1>
+<pre>
+<a href="../">../</a>
+<a href="redistrib_11.8.0.json">redistrib_11.8.0.json</a>              2023-10-15 12:00  123456
+<a href="redistrib_12.0.0.json">redistrib_12.0.0.json</a>              2023-12-01 12:00  234567
+<a href="redistrib_12.4.1.json">redistrib_12.4.1.json</a>              2024-06-01 12:00  789012
+</pre>
+</body>
+</html>
+        "#;
+
+        let versions = parse_available_versions(html).unwrap();
+        assert_eq!(versions.len(), 3);
+        assert!(versions.contains("11.8.0"));
+        assert!(versions.contains("12.0.0"));
+        assert!(versions.contains("12.4.1"));
+    }
+
+    #[test]
+    fn test_parse_available_versions_empty() {
+        let html = "<html><body>No versions here</body></html>";
+        let versions = parse_available_versions(html).unwrap();
+        assert!(versions.is_empty());
+    }
+
+    #[test]
+    fn test_parse_available_versions_sorted() {
+        let html = r#"
+<a href="redistrib_12.4.1.json">redistrib_12.4.1.json</a>
+<a href="redistrib_11.8.0.json">redistrib_11.8.0.json</a>
+<a href="redistrib_12.0.0.json">redistrib_12.0.0.json</a>
+        "#;
+
+        let versions = parse_available_versions(html).unwrap();
+        let versions_vec: Vec<&String> = versions.iter().collect();
+        // BTreeSet keeps them sorted
+        assert_eq!(versions_vec[0], "11.8.0");
+        assert_eq!(versions_vec[1], "12.0.0");
+        assert_eq!(versions_vec[2], "12.4.1");
+    }
+
+    #[test]
+    fn test_parse_available_versions_ignores_invalid() {
+        let html = r#"
+<a href="redistrib_12.4.1.json">redistrib_12.4.1.json</a>
+<a href="redistrib_invalid.json">redistrib_invalid.json</a>
+<a href="some_other_file.txt">some_other_file.txt</a>
+<a href="redistrib_12.json">redistrib_12.json</a>
+<a href="redistrib_12.0.0.json">redistrib_12.0.0.json</a>
+        "#;
+
+        let versions = parse_available_versions(html).unwrap();
+        assert_eq!(versions.len(), 2);
+        assert!(versions.contains("12.4.1"));
+        assert!(versions.contains("12.0.0"));
+    }
+
+    #[test]
+    fn test_base_download_urls() {
+        assert!(BaseDownloadUrls::cuda().contains("nvidia.com"));
+        assert!(BaseDownloadUrls::cuda().contains("cuda"));
+        assert!(BaseDownloadUrls::cudnn().contains("nvidia.com"));
+        assert!(BaseDownloadUrls::cudnn().contains("cudnn"));
+    }
+}
