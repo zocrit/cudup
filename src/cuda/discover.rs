@@ -83,44 +83,6 @@ pub async fn fetch_cuda_version_metadata(version: &str) -> Result<CudaReleaseMet
     fetch_version_metadata(CUDA_BASE_URL, "CUDA", version).await
 }
 
-/// Fetches cuDNN versions compatible with a specific CUDA version
-///
-/// Returns a map of cuDNN version to its corresponding CUDA variant string (e.g., "cuda12")
-/// Only returns cuDNN versions that support the given CUDA major version
-pub async fn fetch_compatible_cudnn_versions(cuda_version: &str) -> Result<BTreeSet<String>> {
-    let cuda_major = cuda_version
-        .split('.')
-        .next()
-        .context("Invalid CUDA version format")?;
-
-    let all_cudnn_versions = fetch_available_cudnn_versions().await?;
-
-    // Fetch all metadata in parallel
-    let metadata_futures: Vec<_> = all_cudnn_versions
-        .iter()
-        .map(|v| async move {
-            let metadata = fetch_cudnn_version_metadata(v).await.ok()?;
-            Some((v.clone(), metadata))
-        })
-        .collect();
-
-    let results = futures::future::join_all(metadata_futures).await;
-
-    let mut compatible_versions = BTreeSet::new();
-    for result in results.into_iter().flatten() {
-        let (cudnn_version, metadata) = result;
-        // Check if this cuDNN supports our CUDA major version
-        if let Some(cudnn_pkg) = metadata.get_package("cudnn")
-            && let Some(variants) = &cudnn_pkg.cuda_variant
-            && variants.contains(&cuda_major.to_string())
-        {
-            compatible_versions.insert(cudnn_version);
-        }
-    }
-
-    Ok(compatible_versions)
-}
-
 /// Finds the newest cuDNN version compatible with a specific CUDA version
 ///
 /// Uses early exit optimization - iterates from newest to oldest and returns
