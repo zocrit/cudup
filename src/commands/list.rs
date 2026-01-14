@@ -1,13 +1,28 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 
-use crate::cuda::discover::fetch_available_cuda_versions;
+use crate::{config, cuda::discover::fetch_available_cuda_versions};
 
 pub async fn list_available_versions() -> Result<()> {
-    let versions = fetch_available_cuda_versions().await?;
+    let versions = fetch_available_cuda_versions()
+        .await
+        .context("Failed to fetch available CUDA versions")?;
 
-    for version in versions {
-        println!("{:>10}", version);
+    if versions.is_empty() {
+        println!("No CUDA versions available");
+        return Ok(());
     }
+
+    let versions_dir = config::versions_dir().ok();
+
+    println!("Available CUDA versions:");
+    versions.iter().for_each(|version| {
+        let installed = versions_dir
+            .as_ref()
+            .is_some_and(|dir| dir.join(version).exists());
+        println!("{} {:>10}", if installed { "*" } else { " " }, version);
+    });
+
+    println!("\n* = installed");
 
     Ok(())
 }
