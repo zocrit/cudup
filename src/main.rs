@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
-mod cache;
 mod commands;
+mod config;
 mod cuda;
 mod install;
 

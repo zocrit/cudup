@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
-use crate::cache;
+use crate::config;
 use crate::cuda::discover::{
     BaseDownloadUrls, fetch_available_cuda_versions, fetch_compatible_cudnn_versions,
     fetch_cuda_version_metadata, fetch_cudnn_version_metadata,
@@ -224,12 +224,12 @@ pub async fn extract_tarball(archive_path: &Path, dest_dir: &Path) -> Result<()>
 
 /// Returns the installation directory for a specific CUDA version
 pub fn version_install_dir(cuda_version: &str) -> Result<PathBuf> {
-    Ok(cache::versions_dir()?.join(cuda_version))
+    Ok(config::versions_dir()?.join(cuda_version))
 }
 
 /// Returns the downloads directory for temporary archives
 pub fn downloads_dir() -> Result<PathBuf> {
-    Ok(cache::cache_dir()?.join("downloads"))
+    config::downloads_dir()
 }
 
 /// Format bytes as human-readable size

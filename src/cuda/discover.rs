@@ -1,4 +1,3 @@
-use crate::cache;
 use crate::cuda::metadata::CudaReleaseMetadata;
 use anyhow::{Context, Result};
 use reqwest::Client;
@@ -21,21 +20,7 @@ impl BaseDownloadUrls {
 }
 
 /// Fetches the list of available CUDA versions from NVIDIA's redist index
-/// Uses cache if available and not expired (24h TTL)
 pub async fn fetch_available_cuda_versions() -> Result<BTreeSet<String>> {
-    fetch_available_cuda_versions_with_options(false).await
-}
-
-/// Fetches CUDA versions with option to force refresh
-pub async fn fetch_available_cuda_versions_with_options(
-    force_refresh: bool,
-) -> Result<BTreeSet<String>> {
-    // Try cache first
-    if let Some(cached) = cache::load_cached_cuda_versions(force_refresh).await? {
-        return Ok(cached);
-    }
-
-    // Fetch from network
     let client = Client::new();
     let response = client
         .get(format!("{}/", BaseDownloadUrls::cuda()))
@@ -48,30 +33,11 @@ pub async fn fetch_available_cuda_versions_with_options(
         .await
         .context("Failed to read CUDA versions response")?;
 
-    let versions = parse_available_versions(&body)?;
-
-    // Save to cache
-    cache::save_cuda_versions(&versions).await?;
-
-    Ok(versions)
+    parse_available_versions(&body)
 }
 
 /// Fetches the list of available cuDNN versions from NVIDIA's redist index
-/// Uses cache if available and not expired (24h TTL)
 pub async fn fetch_available_cudnn_versions() -> Result<BTreeSet<String>> {
-    fetch_available_cudnn_versions_with_options(false).await
-}
-
-/// Fetches cuDNN versions with option to force refresh
-pub async fn fetch_available_cudnn_versions_with_options(
-    force_refresh: bool,
-) -> Result<BTreeSet<String>> {
-    // Try cache first
-    if let Some(cached) = cache::load_cached_cudnn_versions(force_refresh).await? {
-        return Ok(cached);
-    }
-
-    // Fetch from network
     let client = Client::new();
     let response = client
         .get(format!("{}/", BaseDownloadUrls::cudnn()))
@@ -84,12 +50,7 @@ pub async fn fetch_available_cudnn_versions_with_options(
         .await
         .context("Failed to read cuDNN versions response")?;
 
-    let versions = parse_available_versions(&body)?;
-
-    // Save to cache
-    cache::save_cudnn_versions(&versions).await?;
-
-    Ok(versions)
+    parse_available_versions(&body)
 }
 
 /// Parses version strings from the HTML directory listing
@@ -103,22 +64,7 @@ pub fn parse_available_versions(html: &str) -> Result<BTreeSet<String>> {
 }
 
 /// Fetches the detailed metadata JSON for a specific CUDA version
-/// Uses cache if available and not expired (7 day TTL)
 pub async fn fetch_cuda_version_metadata(version: &str) -> Result<CudaReleaseMetadata> {
-    fetch_cuda_version_metadata_with_options(version, false).await
-}
-
-/// Fetches CUDA metadata with option to force refresh
-pub async fn fetch_cuda_version_metadata_with_options(
-    version: &str,
-    force_refresh: bool,
-) -> Result<CudaReleaseMetadata> {
-    // Try cache first
-    if let Some(cached) = cache::load_cached_cuda_metadata(version, force_refresh).await? {
-        return Ok(cached);
-    }
-
-    // Fetch from network
     let client = Client::new();
     let url = format!("{}/redistrib_{}.json", BaseDownloadUrls::cuda(), version);
 
@@ -136,15 +82,10 @@ pub async fn fetch_cuda_version_metadata_with_options(
         );
     }
 
-    let metadata: CudaReleaseMetadata = response
+    response
         .json()
         .await
-        .with_context(|| format!("Failed to parse CUDA {} metadata JSON", version))?;
-
-    // Save to cache
-    cache::save_cuda_metadata(version, &metadata).await?;
-
-    Ok(metadata)
+        .with_context(|| format!("Failed to parse CUDA {} metadata JSON", version))
 }
 
 /// Fetches cuDNN versions compatible with a specific CUDA version
@@ -152,28 +93,19 @@ pub async fn fetch_cuda_version_metadata_with_options(
 /// Returns a map of cuDNN version to its corresponding CUDA variant string (e.g., "cuda12")
 /// Only returns cuDNN versions that support the given CUDA major version
 pub async fn fetch_compatible_cudnn_versions(cuda_version: &str) -> Result<BTreeSet<String>> {
-    fetch_compatible_cudnn_versions_with_options(cuda_version, false).await
-}
-
-/// Fetches compatible cuDNN versions with option to force refresh
-pub async fn fetch_compatible_cudnn_versions_with_options(
-    cuda_version: &str,
-    force_refresh: bool,
-) -> Result<BTreeSet<String>> {
     let cuda_major = cuda_version
         .split('.')
         .next()
         .context("Invalid CUDA version format")?;
 
-    let all_cudnn_versions = fetch_available_cudnn_versions_with_options(force_refresh).await?;
+    let all_cudnn_versions = fetch_available_cudnn_versions().await?;
     let mut compatible_versions = BTreeSet::new();
 
     for cudnn_version in &all_cudnn_versions {
-        let metadata =
-            match fetch_cudnn_version_metadata_with_options(cudnn_version, force_refresh).await {
-                Ok(m) => m,
-                Err(_) => continue, // Skip versions we can't fetch
-            };
+        let metadata = match fetch_cudnn_version_metadata(cudnn_version).await {
+            Ok(m) => m,
+            Err(_) => continue, // Skip versions we can't fetch
+        };
 
         // Check if this cuDNN supports our CUDA major version
         if let Some(cudnn_pkg) = metadata.get_package("cudnn")
@@ -188,22 +120,7 @@ pub async fn fetch_compatible_cudnn_versions_with_options(
 }
 
 /// Fetches the detailed metadata JSON for a specific cuDNN version
-/// Uses cache if available and not expired (7 day TTL)
 pub async fn fetch_cudnn_version_metadata(version: &str) -> Result<CudaReleaseMetadata> {
-    fetch_cudnn_version_metadata_with_options(version, false).await
-}
-
-/// Fetches cuDNN metadata with option to force refresh
-pub async fn fetch_cudnn_version_metadata_with_options(
-    version: &str,
-    force_refresh: bool,
-) -> Result<CudaReleaseMetadata> {
-    // Try cache first
-    if let Some(cached) = cache::load_cached_cudnn_metadata(version, force_refresh).await? {
-        return Ok(cached);
-    }
-
-    // Fetch from network
     let client = Client::new();
     let url = format!("{}/redistrib_{}.json", BaseDownloadUrls::cudnn(), version);
 
@@ -221,15 +138,10 @@ pub async fn fetch_cudnn_version_metadata_with_options(
         );
     }
 
-    let metadata: CudaReleaseMetadata = response
+    response
         .json()
         .await
-        .with_context(|| format!("Failed to parse cuDNN {} metadata JSON", version))?;
-
-    // Save to cache
-    cache::save_cudnn_metadata(version, &metadata).await?;
-
-    Ok(metadata)
+        .with_context(|| format!("Failed to parse cuDNN {} metadata JSON", version))
 }
 
 #[cfg(test)]
