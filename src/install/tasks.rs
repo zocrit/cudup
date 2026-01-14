@@ -1,8 +1,6 @@
 use anyhow::{Context, Result};
 
-use crate::cuda::discover::{
-    CUDA_BASE_URL, CUDNN_BASE_URL, fetch_compatible_cudnn_versions, fetch_cudnn_version_metadata,
-};
+use crate::cuda::discover::{CUDA_BASE_URL, CUDNN_BASE_URL, find_newest_compatible_cudnn};
 use crate::cuda::metadata::{CudaReleaseMetadata, PlatformInfo};
 
 use super::download::DownloadTask;
@@ -17,12 +15,10 @@ pub async fn find_compatible_cudnn(cuda_version: &str) -> Result<Option<(String,
         .next()
         .context("Invalid CUDA version format")?;
 
-    let compatible_versions = fetch_compatible_cudnn_versions(cuda_version).await?;
-
-    // Return the newest compatible version (last in the sorted set)
-    if let Some(cudnn_version) = compatible_versions.iter().next_back() {
+    // Use optimized early-exit search for newest compatible version
+    if let Some(cudnn_version) = find_newest_compatible_cudnn(cuda_version).await? {
         let cuda_variant = format!("cuda{}", cuda_major);
-        return Ok(Some((cudnn_version.clone(), cuda_variant)));
+        return Ok(Some((cudnn_version, cuda_variant)));
     }
 
     Ok(None)
