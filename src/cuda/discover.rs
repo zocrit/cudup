@@ -7,23 +7,14 @@ use std::sync::LazyLock;
 static VERSION_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"redistrib_(\d+\.\d+\.\d+)\.json").unwrap());
 
-pub struct BaseDownloadUrls;
-
-impl BaseDownloadUrls {
-    pub fn cuda() -> &'static str {
-        "https://developer.download.nvidia.com/compute/cuda/redist"
-    }
-
-    pub fn cudnn() -> &'static str {
-        "https://developer.download.nvidia.com/compute/cudnn/redist"
-    }
-}
+pub const CUDA_BASE_URL: &str = "https://developer.download.nvidia.com/compute/cuda/redist";
+pub const CUDNN_BASE_URL: &str = "https://developer.download.nvidia.com/compute/cudnn/redist";
 
 /// Fetches the list of available CUDA versions from NVIDIA's redist index
 pub async fn fetch_available_cuda_versions() -> Result<BTreeSet<String>> {
     let client = Client::new();
     let response = client
-        .get(format!("{}/", BaseDownloadUrls::cuda()))
+        .get(format!("{}/", CUDA_BASE_URL))
         .send()
         .await
         .context("Failed to fetch CUDA versions index")?;
@@ -40,7 +31,7 @@ pub async fn fetch_available_cuda_versions() -> Result<BTreeSet<String>> {
 pub async fn fetch_available_cudnn_versions() -> Result<BTreeSet<String>> {
     let client = Client::new();
     let response = client
-        .get(format!("{}/", BaseDownloadUrls::cudnn()))
+        .get(format!("{}/", CUDNN_BASE_URL))
         .send()
         .await
         .context("Failed to fetch cuDNN versions index")?;
@@ -66,7 +57,7 @@ pub fn parse_available_versions(html: &str) -> Result<BTreeSet<String>> {
 /// Fetches the detailed metadata JSON for a specific CUDA version
 pub async fn fetch_cuda_version_metadata(version: &str) -> Result<CudaReleaseMetadata> {
     let client = Client::new();
-    let url = format!("{}/redistrib_{}.json", BaseDownloadUrls::cuda(), version);
+    let url = format!("{}/redistrib_{}.json", CUDA_BASE_URL, version);
 
     let response = client
         .get(&url)
@@ -122,7 +113,7 @@ pub async fn fetch_compatible_cudnn_versions(cuda_version: &str) -> Result<BTree
 /// Fetches the detailed metadata JSON for a specific cuDNN version
 pub async fn fetch_cudnn_version_metadata(version: &str) -> Result<CudaReleaseMetadata> {
     let client = Client::new();
-    let url = format!("{}/redistrib_{}.json", BaseDownloadUrls::cudnn(), version);
+    let url = format!("{}/redistrib_{}.json", CUDNN_BASE_URL, version);
 
     let response = client
         .get(&url)
@@ -214,9 +205,9 @@ mod tests {
 
     #[test]
     fn test_base_download_urls() {
-        assert!(BaseDownloadUrls::cuda().contains("nvidia.com"));
-        assert!(BaseDownloadUrls::cuda().contains("cuda"));
-        assert!(BaseDownloadUrls::cudnn().contains("nvidia.com"));
-        assert!(BaseDownloadUrls::cudnn().contains("cudnn"));
+        assert!(CUDA_BASE_URL.contains("nvidia.com"));
+        assert!(CUDA_BASE_URL.contains("cuda"));
+        assert!(CUDNN_BASE_URL.contains("nvidia.com"));
+        assert!(CUDNN_BASE_URL.contains("cudnn"));
     }
 }

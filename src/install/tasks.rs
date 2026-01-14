@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 
 use crate::cuda::discover::{
-    BaseDownloadUrls, fetch_compatible_cudnn_versions, fetch_cudnn_version_metadata,
+    CUDA_BASE_URL, CUDNN_BASE_URL, fetch_compatible_cudnn_versions, fetch_cudnn_version_metadata,
 };
 use crate::cuda::metadata::{CudaReleaseMetadata, PlatformInfo};
 
@@ -58,11 +58,7 @@ pub fn collect_cuda_download_tasks(
             }
         };
 
-        let url = format!(
-            "{}/{}",
-            BaseDownloadUrls::cuda(),
-            download_info.relative_path
-        );
+        let url = format!("{}/{}", CUDA_BASE_URL, download_info.relative_path);
 
         let size = download_info.size.parse().unwrap_or(0);
 
@@ -101,11 +97,7 @@ pub fn collect_cudnn_download_task(
         },
     };
 
-    let url = format!(
-        "{}/{}",
-        BaseDownloadUrls::cudnn(),
-        download_info.relative_path
-    );
+    let url = format!("{}/{}", CUDNN_BASE_URL, download_info.relative_path);
 
     let size = download_info.size.parse().unwrap_or(0);
 
