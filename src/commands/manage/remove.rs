@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::fs;
 
-use super::{env_file_path, is_rc_configured, prompt_confirmation, remove_cudup_lines, Shell};
+use super::{Shell, env_file_path, is_rc_configured, prompt_confirmation, remove_cudup_lines};
 
 pub fn remove() -> Result<()> {
     let shell = Shell::detect()?;

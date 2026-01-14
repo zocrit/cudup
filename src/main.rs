@@ -26,6 +26,8 @@ enum Commands {
     },
     /// List available CUDA versions
     List,
+    /// Verify cudup configuration and CUDA installation
+    Check,
     /// Activate a specific CUDA version
     Use {
         #[arg(
@@ -63,6 +65,7 @@ async fn main() -> Result<()> {
     match &cli.command {
         Commands::Install { version } => commands::install(version).await?,
         Commands::List => commands::list_available_versions().await?,
+        Commands::Check => commands::check()?,
         Commands::Use { version } => commands::use_version(version).await?,
         Commands::Manage { command } => match command {
             ManageCommand::Setup => commands::setup()?,
