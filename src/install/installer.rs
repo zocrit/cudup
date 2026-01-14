@@ -60,16 +60,16 @@ async fn process_download_task(
     // Verify checksum
     let verify_spinner = create_spinner(mp, format!("Verifying {}...", task.package_name));
     if !verify_checksum(&archive_path, &task.sha256).await? {
-        verify_spinner.finish_with_message("✗ checksum failed");
+        verify_spinner.finish_with_message("[FAIL] checksum failed");
         fs::remove_file(&archive_path).await.ok();
         bail!("Checksum verification failed for {}", task.package_name);
     }
-    verify_spinner.finish_with_message(format!("✓ {} verified", task.package_name));
+    verify_spinner.finish_with_message(format!("[OK] {} verified", task.package_name));
 
     // Extract
     let extract_spinner = create_spinner(mp, format!("Extracting {}...", task.package_name));
     extract_tarball(&archive_path, install_dir).await?;
-    extract_spinner.finish_with_message(format!("✓ {} extracted", task.package_name));
+    extract_spinner.finish_with_message(format!("[OK] {} extracted", task.package_name));
 
     // Cleanup
     fs::remove_file(&archive_path).await.ok();
@@ -85,14 +85,14 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
     let available_versions = fetch_available_cuda_versions().await?;
     if !available_versions.contains(version) {
         check_spinner.finish_and_clear();
-        println!("✗ version not found");
+        println!("[FAIL] version not found");
         bail!(
             "CUDA version {} is not available. Use 'cudup list' to see available versions.",
             version
         );
     }
     check_spinner.finish_and_clear();
-    println!("✓ Version available");
+    println!("[OK] Version available");
 
     let install_dir = version_install_dir(version)?;
     if install_dir.exists() {
@@ -104,7 +104,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
     }
 
     println!(
-        "\n📦 Installing CUDA {} to {}\n",
+        "\nInstalling CUDA {} to {}\n",
         version,
         install_dir.display()
     );
@@ -116,7 +116,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
     let cuda_total_size: u64 = cuda_tasks.iter().map(|t| t.size).sum();
     meta_spinner.finish_and_clear();
     println!(
-        "✓ Found {} CUDA packages ({})",
+        "[OK] Found {} CUDA packages ({})",
         cuda_tasks.len(),
         format_size(cuda_total_size)
     );
@@ -126,13 +126,13 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
     let cudnn_task =
         if let Some((cudnn_version, cuda_variant)) = find_compatible_cudnn(version).await? {
             cudnn_spinner.finish_and_clear();
-            println!("✓ Found cuDNN {} ({})", cudnn_version, cuda_variant);
+            println!("[OK] Found cuDNN {} ({})", cudnn_version, cuda_variant);
 
             let cudnn_metadata = fetch_cudnn_version_metadata(&cudnn_version).await?;
             collect_cudnn_download_task(&cudnn_metadata, &cuda_variant)?
         } else {
             cudnn_spinner.finish_and_clear();
-            println!("⚠ No compatible cuDNN found");
+            println!("[WARN] No compatible cuDNN found");
             None
         };
 
@@ -141,7 +141,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
     let total_packages = cuda_tasks.len() + cudnn_task.iter().count();
 
     println!(
-        "\n📥 Downloading {} packages ({})\n",
+        "\nDownloading {} packages ({})\n",
         total_packages,
         format_size(total_size)
     );
@@ -163,7 +163,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
         process_download_task(&client, task, &downloads, &install_dir, &mp).await?;
     }
 
-    println!("\n✅ CUDA {} installed successfully!\n", version);
+    println!("\n[OK] CUDA {} installed successfully!\n", version);
     println!("To use this version, run:");
     println!("  cudup use {}\n", version);
 
