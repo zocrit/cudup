@@ -1,4 +1,5 @@
 use anyhow::{Context, Result, bail};
+use indicatif::ProgressBar;
 use reqwest::Client;
 use std::path::Path;
 use tokio::fs;
@@ -14,7 +15,24 @@ pub struct DownloadTask {
     pub relative_path: String,
 }
 
-pub async fn download_file(client: &Client, url: &str, dest: &Path) -> Result<()> {
+impl DownloadTask {
+    /// Returns the archive filename from the relative path
+    pub fn archive_name(&self) -> &str {
+        self.relative_path
+            .split('/')
+            .next_back()
+            .unwrap_or("archive.tar.xz")
+    }
+}
+
+pub async fn download_file(
+    client: &Client,
+    url: &str,
+    dest: &Path,
+    progress: Option<&ProgressBar>,
+) -> Result<()> {
+    use futures::StreamExt;
+
     let response = client
         .get(url)
         .send()
@@ -30,13 +48,18 @@ pub async fn download_file(client: &Client, url: &str, dest: &Path) -> Result<()
         fs::create_dir_all(parent).await?;
     }
 
-    let bytes = response
-        .bytes()
-        .await
-        .with_context(|| format!("Failed to download {}", url))?;
-
     let mut file = fs::File::create(dest).await?;
-    file.write_all(&bytes).await?;
+    let mut stream = response.bytes_stream();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.with_context(|| format!("Failed to download chunk from {}", url))?;
+        file.write_all(&chunk).await?;
+        if let Some(pb) = progress {
+            pb.inc(chunk.len() as u64);
+        }
+    }
+
+    file.flush().await?;
 
     Ok(())
 }

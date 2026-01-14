@@ -10,38 +10,62 @@ static VERSION_REGEX: LazyLock<regex::Regex> =
 pub const CUDA_BASE_URL: &str = "https://developer.download.nvidia.com/compute/cuda/redist";
 pub const CUDNN_BASE_URL: &str = "https://developer.download.nvidia.com/compute/cudnn/redist";
 
-/// Fetches the list of available CUDA versions from NVIDIA's redist index
-pub async fn fetch_available_cuda_versions() -> Result<BTreeSet<String>> {
+/// Generic function to fetch available versions from a redist index
+async fn fetch_available_versions(base_url: &str, product: &str) -> Result<BTreeSet<String>> {
     let client = Client::new();
     let response = client
-        .get(format!("{}/", CUDA_BASE_URL))
+        .get(format!("{}/", base_url))
         .send()
         .await
-        .context("Failed to fetch CUDA versions index")?;
+        .with_context(|| format!("Failed to fetch {} versions index", product))?;
 
     let body = response
         .text()
         .await
-        .context("Failed to read CUDA versions response")?;
+        .with_context(|| format!("Failed to read {} versions response", product))?;
 
     parse_available_versions(&body)
 }
 
+/// Generic function to fetch version metadata from a redist index
+async fn fetch_version_metadata(
+    base_url: &str,
+    product: &str,
+    version: &str,
+) -> Result<CudaReleaseMetadata> {
+    let client = Client::new();
+    let url = format!("{}/redistrib_{}.json", base_url, version);
+
+    let response = client.get(&url).send().await.with_context(|| {
+        format!(
+            "Failed to fetch {} {} metadata from {}",
+            product, version, url
+        )
+    })?;
+
+    if !response.status().is_success() {
+        anyhow::bail!(
+            "Failed to fetch {} {} metadata: HTTP {}",
+            product,
+            version,
+            response.status()
+        );
+    }
+
+    response
+        .json()
+        .await
+        .with_context(|| format!("Failed to parse {} {} metadata JSON", product, version))
+}
+
+/// Fetches the list of available CUDA versions from NVIDIA's redist index
+pub async fn fetch_available_cuda_versions() -> Result<BTreeSet<String>> {
+    fetch_available_versions(CUDA_BASE_URL, "CUDA").await
+}
+
 /// Fetches the list of available cuDNN versions from NVIDIA's redist index
 pub async fn fetch_available_cudnn_versions() -> Result<BTreeSet<String>> {
-    let client = Client::new();
-    let response = client
-        .get(format!("{}/", CUDNN_BASE_URL))
-        .send()
-        .await
-        .context("Failed to fetch cuDNN versions index")?;
-
-    let body = response
-        .text()
-        .await
-        .context("Failed to read cuDNN versions response")?;
-
-    parse_available_versions(&body)
+    fetch_available_versions(CUDNN_BASE_URL, "cuDNN").await
 }
 
 /// Parses version strings from the HTML directory listing
@@ -56,27 +80,7 @@ pub fn parse_available_versions(html: &str) -> Result<BTreeSet<String>> {
 
 /// Fetches the detailed metadata JSON for a specific CUDA version
 pub async fn fetch_cuda_version_metadata(version: &str) -> Result<CudaReleaseMetadata> {
-    let client = Client::new();
-    let url = format!("{}/redistrib_{}.json", CUDA_BASE_URL, version);
-
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .with_context(|| format!("Failed to fetch CUDA {} metadata from {}", version, url))?;
-
-    if !response.status().is_success() {
-        anyhow::bail!(
-            "Failed to fetch CUDA {} metadata: HTTP {}",
-            version,
-            response.status()
-        );
-    }
-
-    response
-        .json()
-        .await
-        .with_context(|| format!("Failed to parse CUDA {} metadata JSON", version))
+    fetch_version_metadata(CUDA_BASE_URL, "CUDA", version).await
 }
 
 /// Fetches cuDNN versions compatible with a specific CUDA version
@@ -112,27 +116,7 @@ pub async fn fetch_compatible_cudnn_versions(cuda_version: &str) -> Result<BTree
 
 /// Fetches the detailed metadata JSON for a specific cuDNN version
 pub async fn fetch_cudnn_version_metadata(version: &str) -> Result<CudaReleaseMetadata> {
-    let client = Client::new();
-    let url = format!("{}/redistrib_{}.json", CUDNN_BASE_URL, version);
-
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .with_context(|| format!("Failed to fetch cuDNN {} metadata from {}", version, url))?;
-
-    if !response.status().is_success() {
-        anyhow::bail!(
-            "Failed to fetch cuDNN {} metadata: HTTP {}",
-            version,
-            response.status()
-        );
-    }
-
-    response
-        .json()
-        .await
-        .with_context(|| format!("Failed to parse cuDNN {} metadata JSON", version))
+    fetch_version_metadata(CUDNN_BASE_URL, "cuDNN", version).await
 }
 
 #[cfg(test)]
