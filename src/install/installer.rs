@@ -84,13 +84,15 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
     let check_spinner = create_spinner(&mp, "Checking available versions...".to_string());
     let available_versions = fetch_available_cuda_versions().await?;
     if !available_versions.contains(version) {
-        check_spinner.finish_with_message("✗ version not found");
+        check_spinner.finish_and_clear();
+        println!("✗ version not found");
         bail!(
             "CUDA version {} is not available. Use 'cudup list' to see available versions.",
             version
         );
     }
-    check_spinner.finish_with_message("✓ Version available");
+    check_spinner.finish_and_clear();
+    println!("✓ Version available");
 
     let install_dir = version_install_dir(version)?;
     if install_dir.exists() {
@@ -112,25 +114,25 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
     let cuda_metadata = fetch_cuda_version_metadata(version).await?;
     let cuda_tasks = collect_cuda_download_tasks(&cuda_metadata, version)?;
     let cuda_total_size: u64 = cuda_tasks.iter().map(|t| t.size).sum();
-    meta_spinner.finish_with_message(format!(
+    meta_spinner.finish_and_clear();
+    println!(
         "✓ Found {} CUDA packages ({})",
         cuda_tasks.len(),
         format_size(cuda_total_size)
-    ));
+    );
 
     // Find compatible cuDNN
     let cudnn_spinner = create_spinner(&mp, "Finding compatible cuDNN version...".to_string());
     let cudnn_task =
         if let Some((cudnn_version, cuda_variant)) = find_compatible_cudnn(version).await? {
-            cudnn_spinner.finish_with_message(format!(
-                "✓ Found cuDNN {} ({})",
-                cudnn_version, cuda_variant
-            ));
+            cudnn_spinner.finish_and_clear();
+            println!("✓ Found cuDNN {} ({})", cudnn_version, cuda_variant);
 
             let cudnn_metadata = fetch_cudnn_version_metadata(&cudnn_version).await?;
             collect_cudnn_download_task(&cudnn_metadata, &cuda_variant)?
         } else {
-            cudnn_spinner.finish_with_message("⚠ No compatible cuDNN found");
+            cudnn_spinner.finish_and_clear();
+            println!("⚠ No compatible cuDNN found");
             None
         };
 
