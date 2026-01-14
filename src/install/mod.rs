@@ -163,14 +163,28 @@ pub async fn download_file(client: &Client, url: &str, dest: &Path) -> Result<()
 
 pub async fn verify_checksum(path: &Path, expected_sha256: &str) -> Result<bool> {
     use sha2::{Digest, Sha256};
+    use tokio::io::AsyncReadExt;
 
-    let bytes = fs::read(path).await?;
+    // Normalize expected hash: trim whitespace and convert to lowercase
+    let expected = expected_sha256.trim().to_lowercase();
+
+    // Stream the file to avoid loading it entirely into memory
+    let mut file = fs::File::open(path).await?;
     let mut hasher = Sha256::new();
-    hasher.update(&bytes);
+    let mut buffer = vec![0u8; 8192]; // 8KB buffer
+
+    loop {
+        let bytes_read = file.read(&mut buffer).await?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..bytes_read]);
+    }
+
     let result = hasher.finalize();
     let actual = format!("{:x}", result);
 
-    Ok(actual == expected_sha256)
+    Ok(actual == expected)
 }
 
 pub async fn extract_tarball(archive_path: &Path, dest_dir: &Path) -> Result<()> {
