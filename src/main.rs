@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use std::io::Write;
 
 mod commands;
 mod config;
@@ -37,6 +38,13 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .format(|buf, record| {
+            let level_style = buf.default_level_style(record.level());
+            writeln!(buf, "{level_style}{}{level_style:#} {}", record.level(), record.args())
+        })
+        .init();
+
     let cli = Cli::parse();
 
     match &cli.command {
