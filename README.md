@@ -21,11 +21,14 @@ No more manual downloads, path conflicts, or environment variable headaches.
 
 ## Quick Example
 ```bash
+# One-time setup (configures shell integration)
+cudup setup
+
 # Install CUDA 11.8 with compatible cuDNN
 cudup install 11.8
 
-# Switch to CUDA 11.8 in current shell
-eval "$(cudup use 11.8)"
+# Switch to CUDA 11.8
+cudup use 11.8
 
 # Verify everything works
 cudup doctor
@@ -59,6 +62,7 @@ Track development progress as features are implemented:
 - [ ] List available versions (`cudup list-remote`)
 - [ ] List installed versions (`cudup list`)
 - [ ] Switch between versions (`cudup use`)
+- [ ] Shell integration (`cudup setup`)
 - [ ] Show current active version (`cudup current`)
 - [ ] Health diagnostics (`cudup doctor`)
 - [ ] Basic error handling and user-friendly messages
@@ -66,7 +70,6 @@ Track development progress as features are implemented:
 
 ### v0.5 - Enhanced Experience
 - [ ] Per-project `.cuda-version` files (`cudup local`)
-- [ ] Shell integration (bash/zsh) (`cudup init`)
 - [ ] Automatic cuDNN version matching
 - [ ] Uninstall versions (`cudup uninstall`)
 - [ ] Clean up old versions (`cudup clean`)

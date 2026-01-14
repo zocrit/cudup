@@ -1,4 +1,5 @@
 use anyhow::{Result, bail};
+use log::info;
 
 use crate::install;
 
@@ -15,24 +16,13 @@ pub async fn use_version(version: &str) -> Result<()> {
         );
     }
 
-    // Generate shell export commands
+    // Generate shell export commands (eval'd by shell function from `cudup setup`)
     let cuda_home = install_dir.display();
-
-    // Print shell commands to stdout (to be eval'd)
-    // Using ${VAR:+:$VAR} syntax to handle empty variables gracefully
     println!("export CUDA_HOME=\"{}\"", cuda_home);
     println!("export PATH=\"$CUDA_HOME/bin${{PATH:+:$PATH}}\"");
     println!("export LD_LIBRARY_PATH=\"$CUDA_HOME/lib64${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}\"");
 
-    // Print usage instructions to stderr (so they don't interfere with eval)
-    eprintln!();
-    eprintln!("# CUDA {} activated", version);
-    eprintln!("# ");
-    eprintln!("# To use this version, run:");
-    eprintln!("#   eval \"$(cudup use {})\"", version);
-    eprintln!("# ");
-    eprintln!("# Or add to your shell config (~/.bashrc or ~/.zshrc):");
-    eprintln!("#   eval \"$(cudup use {})\"", version);
+    info!("CUDA {} activated", version);
 
     Ok(())
 }

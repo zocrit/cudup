@@ -34,6 +34,8 @@ enum Commands {
         )]
         version: String,
     },
+    /// Configure shell integration for cudup
+    Setup,
 }
 
 #[tokio::main]
@@ -51,6 +53,7 @@ async fn main() -> Result<()> {
         Commands::Install { version } => commands::install(version).await?,
         Commands::List => commands::list_available_versions().await?,
         Commands::Use { version } => commands::use_version(version).await?,
+        Commands::Setup => commands::setup()?,
     }
 
     Ok(())
