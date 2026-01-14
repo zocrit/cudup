@@ -22,7 +22,7 @@ No more manual downloads, path conflicts, or environment variable headaches.
 ## Quick Example
 ```bash
 # One-time setup (configures shell integration)
-cudup setup
+cudup manage setup
 
 # Install CUDA 11.8 with compatible cuDNN
 cudup install 11.8
@@ -62,7 +62,7 @@ Track development progress as features are implemented:
 - [ ] List available versions (`cudup list-remote`)
 - [ ] List installed versions (`cudup list`)
 - [ ] Switch between versions (`cudup use`)
-- [ ] Shell integration (`cudup setup`)
+- [ ] Shell integration (`cudup manage setup`)
 - [ ] Show current active version (`cudup current`)
 - [ ] Health diagnostics (`cudup doctor`)
 - [ ] Basic error handling and user-friendly messages
