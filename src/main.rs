@@ -15,9 +15,24 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Install { version: Option<String> },
-    List {},
-    Use { version: Option<String> },
+    /// Install a specific CUDA version
+    Install {
+        #[arg(
+            help = "CUDA version to install (e.g., 12.4.1)",
+            value_name = "VERSION"
+        )]
+        version: String,
+    },
+    /// List available CUDA versions
+    List,
+    /// Activate a specific CUDA version
+    Use {
+        #[arg(
+            help = "CUDA version to activate (e.g., 12.4.1)",
+            value_name = "VERSION"
+        )]
+        version: String,
+    },
 }
 
 #[tokio::main]
@@ -26,7 +41,7 @@ async fn main() -> Result<()> {
 
     match &cli.command {
         Commands::Install { version } => commands::install(version).await?,
-        Commands::List {} => commands::list_available_versions().await?,
+        Commands::List => commands::list_available_versions().await?,
         Commands::Use { version } => commands::use_version(version).await?,
     }
 

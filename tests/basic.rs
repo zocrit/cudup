@@ -31,7 +31,8 @@ fn test_install_without_version_fails() {
     cmd.arg("install")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("specify a CUDA version"));
+        .stderr(predicate::str::contains("required"))
+        .stderr(predicate::str::contains("VERSION"));
 }
 
 #[test]
@@ -50,8 +51,8 @@ fn test_use_without_version_fails() {
     cmd.arg("use")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("specify a CUDA version"))
-        .stderr(predicate::str::contains("cudup use <version>"));
+        .stderr(predicate::str::contains("required"))
+        .stderr(predicate::str::contains("VERSION"));
 }
 
 #[test]

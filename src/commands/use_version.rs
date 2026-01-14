@@ -3,25 +3,13 @@ use anyhow::{Result, bail};
 use crate::install;
 
 /// Generates shell commands to activate a specific CUDA version
-pub async fn use_version(version: &Option<String>) -> Result<()> {
-    let version = match version {
-        Some(v) => v.clone(),
-        None => {
-            bail!(
-                "Please specify a CUDA version to use.\n\
-                 Usage: cudup use <version>\n\
-                 Example: cudup use 12.3.1\n\n\
-                 Run 'cudup list' to see available versions."
-            );
-        }
-    };
-
+pub async fn use_version(version: &str) -> Result<()> {
     // Check if the version is installed locally
-    let install_dir = install::version_install_dir(&version)?;
+    let install_dir = install::version_install_dir(version)?;
     if !install_dir.exists() {
         bail!(
             "CUDA {} is not installed.\n\
-             Run 'cudup install {}' to install it, or 'cudup list' to see available versions.",
+             Run 'cudup install {}' to install it.",
             version,
             version
         );
