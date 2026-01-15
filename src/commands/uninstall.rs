@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::{env, fs};
@@ -113,10 +113,18 @@ fn uninstall_single(version: &str, force: bool) -> Result<()> {
         }
     }
 
-    // Remove the directory
-    fs::remove_dir_all(&version_path)?;
-
-    println!("\nRemoved CUDA {}", version);
+    // Remove the directory with proper error handling for race conditions
+    match fs::remove_dir_all(&version_path) {
+        Ok(()) => {
+            println!("\nRemoved CUDA {}", version);
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            bail!("CUDA {} was already removed by another process", version);
+        }
+        Err(e) => {
+            return Err(e).context(format!("Failed to remove CUDA {}", version));
+        }
+    }
 
     if is_active {
         println!("\nNote: Run 'cudup use <version>' to activate a different version,");
@@ -185,14 +193,25 @@ fn uninstall_all(force: bool) -> Result<()> {
         }
     }
 
-    // Remove all versions
+    // Remove all versions with proper error handling for race conditions
+    let mut removed_count = 0;
     for version in &versions {
         let version_path = versions_dir.join(version);
-        fs::remove_dir_all(&version_path)?;
-        println!("Removed CUDA {}", version);
+        match fs::remove_dir_all(&version_path) {
+            Ok(()) => {
+                println!("Removed CUDA {}", version);
+                removed_count += 1;
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                println!("CUDA {} was already removed", version);
+            }
+            Err(e) => {
+                return Err(e).context(format!("Failed to remove CUDA {}", version));
+            }
+        }
     }
 
-    println!("\nRemoved {} version(s)", versions.len());
+    println!("\nRemoved {} version(s)", removed_count);
 
     if active_version.is_some() {
         println!("\nNote: Start a new shell to clear the stale CUDA_HOME.");
