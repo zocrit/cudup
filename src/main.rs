@@ -28,11 +28,14 @@ enum Commands {
     Uninstall {
         #[arg(
             help = "CUDA version to uninstall (e.g., 12.4.1)",
-            value_name = "VERSION"
+            value_name = "VERSION",
+            required_unless_present = "all"
         )]
-        version: String,
+        version: Option<String>,
         #[arg(short, long, help = "Skip confirmation prompt")]
         force: bool,
+        #[arg(short, long, help = "Uninstall all versions")]
+        all: bool,
     },
     /// List available CUDA versions
     List,
@@ -74,7 +77,9 @@ async fn main() -> Result<()> {
 
     match &cli.command {
         Commands::Install { version } => commands::install(version).await?,
-        Commands::Uninstall { version, force } => commands::uninstall(version, *force)?,
+        Commands::Uninstall { version, force, all } => {
+            commands::uninstall(version.as_deref(), *force, *all)?
+        }
         Commands::List => commands::list_available_versions().await?,
         Commands::Check => commands::check()?,
         Commands::Use { version } => commands::use_version(version).await?,
