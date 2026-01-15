@@ -55,8 +55,8 @@ impl CudaReleaseMetadata {
         self.packages.get(name)
     }
 
-    pub fn package_names(&self) -> Vec<&str> {
-        self.packages.keys().map(|s| s.as_str()).collect()
+    pub fn package_names(&self) -> impl Iterator<Item = &str> {
+        self.packages.keys().map(|s| s.as_str())
     }
 }
 
@@ -65,12 +65,11 @@ impl PackageInfo {
         self.platforms.get(platform)
     }
 
-    pub fn available_platforms(&self) -> Vec<&str> {
+    pub fn available_platforms(&self) -> impl Iterator<Item = &str> {
         self.platforms
             .keys()
             .filter(|k| !k.starts_with("cuda_variant"))
             .map(|s| s.as_str())
-            .collect()
     }
 }
 
@@ -89,11 +88,12 @@ impl PlatformInfo {
         }
     }
 
-    pub fn variants(&self) -> Vec<&str> {
-        match self {
-            PlatformInfo::Variants(variants) => variants.keys().map(|s| s.as_str()).collect(),
-            _ => vec![],
-        }
+    pub fn variants(&self) -> impl Iterator<Item = &str> {
+        let variants = match self {
+            PlatformInfo::Variants(v) => Some(v),
+            _ => None,
+        };
+        variants.into_iter().flatten().map(|(k, _)| k.as_str())
     }
 }
 
@@ -194,7 +194,7 @@ mod tests {
         let metadata: CudaReleaseMetadata =
             serde_json::from_str(sample_cuda_metadata_json()).unwrap();
 
-        let names = metadata.package_names();
+        let names: Vec<&str> = metadata.package_names().collect();
         assert_eq!(names.len(), 2);
         assert!(names.contains(&"cuda_cccl"));
         assert!(names.contains(&"cuda_cudart"));
@@ -225,7 +225,7 @@ mod tests {
             serde_json::from_str(sample_cuda_metadata_json()).unwrap();
 
         let cudart = metadata.get_package("cuda_cudart").unwrap();
-        let platforms = cudart.available_platforms();
+        let platforms: Vec<&str> = cudart.available_platforms().collect();
         assert_eq!(platforms.len(), 2);
         assert!(platforms.contains(&"linux-x86_64"));
         assert!(platforms.contains(&"windows-x86_64"));
@@ -261,7 +261,7 @@ mod tests {
         let cudnn = metadata.get_package("cudnn").unwrap();
         let linux = cudnn.get_platform("linux-x86_64").unwrap();
 
-        let variants = linux.variants();
+        let variants: Vec<&str> = linux.variants().collect();
         assert_eq!(variants.len(), 2);
         assert!(variants.contains(&"cuda11"));
         assert!(variants.contains(&"cuda12"));
