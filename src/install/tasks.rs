@@ -76,6 +76,9 @@ pub fn collect_cuda_download_tasks(
         });
     }
 
+    // Sort by size descending (largest first) for better parallelization potential
+    tasks.sort_by(|a, b| b.size.cmp(&a.size));
+
     Ok(tasks)
 }
 
@@ -225,6 +228,23 @@ mod tests {
             .iter()
             .find(|t| t.package_name.starts_with("release_"));
         assert!(release_task.is_none());
+    }
+
+    #[test]
+    fn test_collect_cuda_download_tasks_sorted_by_size_descending() {
+        let metadata = sample_cuda_metadata();
+        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1").unwrap();
+
+        // Tasks should be sorted largest first
+        // cuda_cudart (3456789) > cuda_cccl (1234567)
+        assert_eq!(tasks.len(), 2);
+        assert_eq!(tasks[0].package_name, "cuda_cudart");
+        assert_eq!(tasks[1].package_name, "cuda_cccl");
+
+        // Verify sizes are in descending order
+        for i in 1..tasks.len() {
+            assert!(tasks[i - 1].size >= tasks[i].size);
+        }
     }
 
     #[test]
