@@ -4,7 +4,7 @@ use log::info;
 use crate::install;
 
 /// Generates shell commands to activate a specific CUDA version
-pub async fn use_version(version: &str) -> Result<()> {
+pub fn use_version(version: &str) -> Result<()> {
     // Check if the version is installed locally
     let install_dir = install::version_install_dir(version)?;
     if !install_dir.exists() {

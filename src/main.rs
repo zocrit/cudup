@@ -82,7 +82,7 @@ async fn main() -> Result<()> {
         }
         Commands::List => commands::list_available_versions().await?,
         Commands::Check => commands::check()?,
-        Commands::Use { version } => commands::use_version(version).await?,
+        Commands::Use { version } => commands::use_version(version)?,
         Commands::Manage { command } => match command {
             ManageCommand::Setup => commands::setup()?,
             ManageCommand::Remove => commands::remove()?,
