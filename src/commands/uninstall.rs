@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use std::path::PathBuf;
 use std::{env, fs};
 
@@ -27,12 +27,12 @@ fn get_active_version_path() -> Option<PathBuf> {
 
 fn is_active_version(version_path: &std::path::Path) -> bool {
     get_active_version_path()
-        .map(|cuda_path| {
-            match (cuda_path.canonicalize(), version_path.canonicalize()) {
+        .map(
+            |cuda_path| match (cuda_path.canonicalize(), version_path.canonicalize()) {
                 (Ok(a), Ok(b)) => a == b,
                 _ => cuda_path == version_path,
-            }
-        })
+            },
+        )
         .unwrap_or(false)
 }
 
@@ -149,11 +149,9 @@ fn uninstall_all(force: bool) -> Result<()> {
     println!();
 
     // Ask for confirmation unless --force
-    if !force {
-        if !prompt_confirmation("Proceed with uninstall?")? {
-            println!("Uninstall cancelled.");
-            return Ok(());
-        }
+    if !force && !prompt_confirmation("Proceed with uninstall?")? {
+        println!("Uninstall cancelled.");
+        return Ok(());
     }
 
     // Remove all versions with proper error handling for race conditions
