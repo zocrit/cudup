@@ -3,7 +3,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::config::{cudup_home, versions_dir};
+use crate::config::{cudup_home, get_installed_versions};
 
 struct CheckResult {
     name: String,
@@ -85,25 +85,10 @@ fn check_shell_integration() -> CheckResult {
 }
 
 fn check_installed_versions() -> CheckResult {
-    let versions_path = match versions_dir() {
-        Ok(path) => path,
+    let versions = match get_installed_versions() {
+        Ok(v) => v,
         Err(e) => return CheckResult::error("installed versions", &e.to_string()),
     };
-
-    if !versions_path.exists() {
-        return CheckResult::ok("installed versions", Some("none"));
-    }
-
-    let versions: Vec<String> = std::fs::read_dir(&versions_path)
-        .ok()
-        .map(|entries| {
-            entries
-                .filter_map(|e| e.ok())
-                .filter(|e| e.path().is_dir())
-                .filter_map(|e| e.file_name().into_string().ok())
-                .collect()
-        })
-        .unwrap_or_default();
 
     if versions.is_empty() {
         CheckResult::ok("installed versions", Some("none"))

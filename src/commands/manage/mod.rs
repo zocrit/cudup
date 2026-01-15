@@ -2,26 +2,17 @@ mod remove;
 mod setup;
 
 use anyhow::{Context, Result, bail};
-use std::io::{self, Write};
 use std::path::PathBuf;
 use std::{env, fs};
 
 use crate::config::cudup_home;
+pub use crate::config::prompt_confirmation;
 
 pub use remove::remove;
 pub use setup::setup;
 
-const BASH_ENV: &str = r#"# cudup shell integration
-cudup() {
-    if [[ "$1" == "use" ]]; then
-        eval "$(command cudup use "${@:2}")"
-    else
-        command cudup "$@"
-    fi
-}
-"#;
-
-const ZSH_ENV: &str = r#"# cudup shell integration
+// Shell integration script (identical for bash and zsh)
+const SHELL_ENV: &str = r#"# cudup shell integration
 cudup() {
     if [[ "$1" == "use" ]]; then
         eval "$(command cudup use "${@:2}")"
@@ -53,10 +44,7 @@ impl Shell {
     }
 
     pub fn env_content(&self) -> &'static str {
-        match self {
-            Shell::Bash => BASH_ENV,
-            Shell::Zsh => ZSH_ENV,
-        }
+        SHELL_ENV
     }
 
     pub fn rc_file(&self) -> Result<PathBuf> {
@@ -85,16 +73,6 @@ pub fn is_rc_configured(rc_path: &PathBuf) -> Result<bool> {
     }
     let content = fs::read_to_string(rc_path)?;
     Ok(content.contains(".cudup/env"))
-}
-
-pub fn prompt_confirmation(message: &str) -> Result<bool> {
-    print!("{} [y/N] ", message);
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-
-    Ok(input.trim().eq_ignore_ascii_case("y"))
 }
 
 /// Removes cudup-related lines from the rc file content

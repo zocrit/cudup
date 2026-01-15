@@ -1,30 +1,9 @@
 use anyhow::{bail, Context, Result};
-use std::io::{self, Write};
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::config::versions_dir;
-
-fn prompt_confirmation(message: &str) -> Result<bool> {
-    print!("{} [y/N] ", message);
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-
-    Ok(input.trim().eq_ignore_ascii_case("y"))
-}
-
-fn format_size(bytes: u64) -> String {
-    const GB: u64 = 1024 * 1024 * 1024;
-    const MB: u64 = 1024 * 1024;
-
-    if bytes >= GB {
-        format!("{:.1} GB", bytes as f64 / GB as f64)
-    } else {
-        format!("{:.1} MB", bytes as f64 / MB as f64)
-    }
-}
+use crate::config::{get_installed_versions, prompt_confirmation, versions_dir};
+use crate::install::format_size;
 
 fn dir_size(path: &std::path::Path) -> Result<u64> {
     let mut size = 0;
@@ -55,22 +34,6 @@ fn is_active_version(version_path: &std::path::Path) -> bool {
             }
         })
         .unwrap_or(false)
-}
-
-fn get_installed_versions() -> Result<Vec<String>> {
-    let versions_path = versions_dir()?;
-
-    if !versions_path.exists() {
-        return Ok(vec![]);
-    }
-
-    let versions: Vec<String> = fs::read_dir(&versions_path)?
-        .filter_map(|e| e.ok())
-        .filter(|e| e.path().is_dir())
-        .filter_map(|e| e.file_name().into_string().ok())
-        .collect();
-
-    Ok(versions)
 }
 
 fn uninstall_single(version: &str, force: bool) -> Result<()> {

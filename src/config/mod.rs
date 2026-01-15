@@ -1,4 +1,6 @@
 use anyhow::{Context, Result};
+use std::fs;
+use std::io::{self, Write};
 use std::path::PathBuf;
 
 /// Returns the base cudup directory (~/.cudup)
@@ -15,6 +17,34 @@ pub fn versions_dir() -> Result<PathBuf> {
 /// Returns the downloads directory (~/.cudup/downloads)
 pub fn downloads_dir() -> Result<PathBuf> {
     Ok(cudup_home()?.join("downloads"))
+}
+
+/// Prompt user for confirmation with [y/N] style prompt
+pub fn prompt_confirmation(message: &str) -> Result<bool> {
+    print!("{} [y/N] ", message);
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+
+    Ok(input.trim().eq_ignore_ascii_case("y"))
+}
+
+/// Get list of installed CUDA versions
+pub fn get_installed_versions() -> Result<Vec<String>> {
+    let versions_path = versions_dir()?;
+
+    if !versions_path.exists() {
+        return Ok(vec![]);
+    }
+
+    let versions: Vec<String> = fs::read_dir(&versions_path)?
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_dir())
+        .filter_map(|e| e.file_name().into_string().ok())
+        .collect();
+
+    Ok(versions)
 }
 
 #[cfg(test)]

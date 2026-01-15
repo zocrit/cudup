@@ -6,4 +6,4 @@ mod utils;
 mod verify;
 
 pub use installer::install_cuda_version;
-pub use utils::version_install_dir;
+pub use utils::{format_size, version_install_dir};
