@@ -18,27 +18,27 @@ enum CheckStatus {
 }
 
 impl CheckResult {
-    fn ok(name: &str, detail: Option<&str>) -> Self {
+    fn ok(name: impl Into<String>, detail: Option<impl Into<String>>) -> Self {
         Self {
-            name: name.to_string(),
+            name: name.into(),
             status: CheckStatus::Ok,
-            detail: detail.map(|s| s.to_string()),
+            detail: detail.map(Into::into),
         }
     }
 
-    fn warning(name: &str, detail: &str) -> Self {
+    fn warning(name: impl Into<String>, detail: impl Into<String>) -> Self {
         Self {
-            name: name.to_string(),
+            name: name.into(),
             status: CheckStatus::Warning,
-            detail: Some(detail.to_string()),
+            detail: Some(detail.into()),
         }
     }
 
-    fn error(name: &str, detail: &str) -> Self {
+    fn error(name: impl Into<String>, detail: impl Into<String>) -> Self {
         Self {
-            name: name.to_string(),
+            name: name.into(),
             status: CheckStatus::Error,
-            detail: Some(detail.to_string()),
+            detail: Some(detail.into()),
         }
     }
 
