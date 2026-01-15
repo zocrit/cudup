@@ -7,13 +7,15 @@ use std::sync::LazyLock;
 static VERSION_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"redistrib_(\d+\.\d+\.\d+)\.json").unwrap());
 
+/// Shared HTTP client for connection pooling and reuse
+static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
+
 pub const CUDA_BASE_URL: &str = "https://developer.download.nvidia.com/compute/cuda/redist";
 pub const CUDNN_BASE_URL: &str = "https://developer.download.nvidia.com/compute/cudnn/redist";
 
 /// Generic function to fetch available versions from a redist index
 async fn fetch_available_versions(base_url: &str, product: &str) -> Result<BTreeSet<String>> {
-    let client = Client::new();
-    let response = client
+    let response = HTTP_CLIENT
         .get(format!("{}/", base_url))
         .send()
         .await
@@ -33,10 +35,9 @@ async fn fetch_version_metadata(
     product: &str,
     version: &str,
 ) -> Result<CudaReleaseMetadata> {
-    let client = Client::new();
     let url = format!("{}/redistrib_{}.json", base_url, version);
 
-    let response = client.get(&url).send().await.with_context(|| {
+    let response = HTTP_CLIENT.get(&url).send().await.with_context(|| {
         format!(
             "Failed to fetch {} {} metadata from {}",
             product, version, url
