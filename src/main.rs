@@ -7,6 +7,8 @@ mod config;
 mod cuda;
 mod install;
 
+use cuda::CudaVersion;
+
 #[derive(Parser)]
 #[command(name = "cudup", author, version, about, long_about = None)]
 struct Cli {
@@ -20,9 +22,10 @@ enum Commands {
     Install {
         #[arg(
             help = "CUDA version to install (e.g., 12.4.1)",
-            value_name = "VERSION"
+            value_name = "VERSION",
+            value_parser = clap::value_parser!(CudaVersion)
         )]
-        version: String,
+        version: CudaVersion,
     },
     /// Uninstall a CUDA version
     Uninstall {
@@ -45,9 +48,10 @@ enum Commands {
     Use {
         #[arg(
             help = "CUDA version to activate (e.g., 12.4.1)",
-            value_name = "VERSION"
+            value_name = "VERSION",
+            value_parser = clap::value_parser!(CudaVersion)
         )]
-        version: String,
+        version: CudaVersion,
     },
     /// Manage cudup installation
     Manage {
@@ -76,13 +80,13 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Install { version } => commands::install(version).await?,
+        Commands::Install { version } => commands::install(version.as_str()).await?,
         Commands::Uninstall { version, force, all } => {
             commands::uninstall(version.as_deref(), *force, *all)?
         }
         Commands::List => commands::list_available_versions().await?,
         Commands::Check => commands::check()?,
-        Commands::Use { version } => commands::use_version(version)?,
+        Commands::Use { version } => commands::use_version(version.as_str())?,
         Commands::Manage { command } => match command {
             ManageCommand::Setup => commands::setup()?,
             ManageCommand::Remove => commands::remove()?,
