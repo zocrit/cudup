@@ -202,14 +202,11 @@ pub fn check() -> Result<()> {
         result.print();
     }
 
-    let errors = checks
-        .iter()
-        .filter(|c| matches!(c.status, CheckStatus::Error))
-        .count();
-    let warnings = checks
-        .iter()
-        .filter(|c| matches!(c.status, CheckStatus::Warning))
-        .count();
+    let (errors, warnings) = checks.iter().fold((0, 0), |(e, w), c| match c.status {
+        CheckStatus::Error => (e + 1, w),
+        CheckStatus::Warning => (e, w + 1),
+        CheckStatus::Ok => (e, w),
+    });
 
     println!();
     if errors > 0 {
