@@ -22,9 +22,9 @@ fn create_progress_bar(mp: &MultiProgress, size: u64, prefix: String) -> Progres
     let pb = mp.add(ProgressBar::new(size));
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{prefix:.cyan.bold} [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+            .template("{prefix:>12.green.bold} [{bar:30.green/dim}] {bytes:>10}/{total_bytes:<10} {bytes_per_sec:>12} ({eta})")
             .unwrap()
-            .progress_chars("█▓░"),
+            .progress_chars("━━╸"),
     );
     pb.set_prefix(prefix);
     pb
@@ -61,16 +61,16 @@ async fn process_download_task(
     // Verify checksum
     let verify_spinner = create_spinner(mp, format!("Verifying {}...", task.package_name));
     if !verify_checksum(&archive_path, &task.sha256).await? {
-        verify_spinner.finish_with_message("[FAIL] checksum failed");
+        verify_spinner.finish_with_message(format!("[FAIL] {} checksum mismatch", task.package_name));
         fs::remove_file(&archive_path).await.ok();
         bail!("Checksum verification failed for {}", task.package_name);
     }
-    verify_spinner.finish_with_message(format!("[OK] {} verified", task.package_name));
+    verify_spinner.finish_and_clear();
 
     // Extract
     let extract_spinner = create_spinner(mp, format!("Extracting {}...", task.package_name));
     extract_tarball(&archive_path, install_dir).await?;
-    extract_spinner.finish_with_message(format!("[OK] {} extracted", task.package_name));
+    extract_spinner.finish_and_clear();
 
     // Cleanup
     fs::remove_file(&archive_path).await.ok();
