@@ -135,7 +135,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
 
     let cudnn_size = cudnn_task.as_ref().map(|t| t.size).unwrap_or(0);
     let total_size = cuda_total_size + cudnn_size;
-    let total_packages = cuda_tasks.len() + cudnn_task.iter().count();
+    let total_packages = cuda_tasks.len() + usize::from(cudnn_task.is_some());
 
     info!(
         "Downloading {} packages ({})",
