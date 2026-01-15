@@ -3,12 +3,19 @@ use anyhow::{Context, Result};
 use reqwest::Client;
 use std::collections::BTreeSet;
 use std::sync::LazyLock;
+use std::time::Duration;
 
 static VERSION_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"redistrib_(\d+\.\d+\.\d+)\.json").unwrap());
 
 /// Shared HTTP client for connection pooling and reuse
-static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
+static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| {
+    Client::builder()
+        .timeout(Duration::from_secs(30))
+        .connect_timeout(Duration::from_secs(10))
+        .build()
+        .expect("Failed to create HTTP client")
+});
 
 pub const CUDA_BASE_URL: &str = "https://developer.download.nvidia.com/compute/cuda/redist";
 pub const CUDNN_BASE_URL: &str = "https://developer.download.nvidia.com/compute/cudnn/redist";

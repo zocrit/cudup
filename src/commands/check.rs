@@ -18,6 +18,7 @@ enum CheckStatus {
 }
 
 impl CheckResult {
+    #[must_use]
     fn ok(name: impl Into<String>, detail: Option<impl Into<String>>) -> Self {
         Self {
             name: name.into(),
@@ -26,6 +27,7 @@ impl CheckResult {
         }
     }
 
+    #[must_use]
     fn warning(name: impl Into<String>, detail: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -34,6 +36,7 @@ impl CheckResult {
         }
     }
 
+    #[must_use]
     fn error(name: impl Into<String>, detail: impl Into<String>) -> Self {
         Self {
             name: name.into(),
