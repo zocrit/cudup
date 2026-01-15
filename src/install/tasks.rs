@@ -102,7 +102,11 @@ pub fn collect_cudnn_download_task(
     let url = format!("{}/{}", CUDNN_BASE_URL, download_info.relative_path);
 
     let size = download_info.size.parse().unwrap_or_else(|e| {
-        log::warn!("Failed to parse size '{}' for cudnn: {}", download_info.size, e);
+        log::warn!(
+            "Failed to parse size '{}' for cudnn: {}",
+            download_info.size,
+            e
+        );
         0
     });
 

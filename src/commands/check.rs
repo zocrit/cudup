@@ -59,10 +59,15 @@ impl CheckResult {
 
 fn check_cudup_home() -> CheckResult {
     match cudup_home() {
-        Ok(path) if path.exists() => CheckResult::ok("cudup directory", Some(&path.display().to_string())),
+        Ok(path) if path.exists() => {
+            CheckResult::ok("cudup directory", Some(&path.display().to_string()))
+        }
         Ok(path) => CheckResult::warning(
             "cudup directory",
-            &format!("{} does not exist (run 'cudup manage setup')", path.display()),
+            &format!(
+                "{} does not exist (run 'cudup manage setup')",
+                path.display()
+            ),
         ),
         Err(e) => CheckResult::error("cudup directory", &e.to_string()),
     }
