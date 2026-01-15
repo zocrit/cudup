@@ -19,6 +19,7 @@ cudup uninstall [OPTIONS] <VERSION>
 | Option | Description |
 |--------|-------------|
 | `-f, --force` | Skip confirmation prompt |
+| `-a, --all` | Uninstall all installed versions |
 
 ## Examples
 
@@ -28,6 +29,12 @@ cudup uninstall 12.4.1
 
 # Uninstall without confirmation (for scripts)
 cudup uninstall -f 12.4.1
+
+# Uninstall all versions
+cudup uninstall --all
+
+# Uninstall all versions without confirmation
+cudup uninstall --all --force
 ```
 
 ## Behavior

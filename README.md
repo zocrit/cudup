@@ -74,13 +74,19 @@ Track development progress as features are implemented:
 - [x] Enhanced diagnostics (runtime checks, GPU detection)
 - [x] Progress bars and colored output
 - [x] Show cudup version (`cudup --version`)
+- [ ] Checksum verification (SHA256 integrity checks)
+- [ ] Resumable downloads for large installers
+- [ ] Pre-flight compatibility checking (GPU driver, compute capability)
 
 ### v1.0 - Production Ready
 - [ ] NCCL support (`--with-nccl`)
 - [ ] TensorRT support (`--with-tensorrt`)
 - [ ] Framework compatibility checking (`cudup check pytorch/tensorflow`)
 - [ ] Configuration file support (`~/.cudup/config.toml`)
-- [ ] Self-update mechanism (`cudup self-update`)
+- [ ] Self-update mechanism (`cudup manage self-update`)
+- [ ] Remote version manifest (fetch latest available versions)
+- [ ] Proxy configuration for corporate environments
+- [ ] PATH rollback support (`cudup manage remove --rollback`)
 - [ ] Advanced installation options (`--minimal`, `--from-cache`)
 - [ ] Global vs local version modes (`cudup global`)
 - [ ] Import existing installations (`cudup import`)
@@ -115,8 +121,8 @@ Full documentation available at **[zocrit.github.io/cudup](https://zocrit.github
 Contributions are welcome! This project is in early development, and we'd love your help.
 
 Please check the [roadmap](#roadmap) above for planned features, and feel free to:
-- Report bugs via [GitHub Issues](https://github.com/yourusername/cudup/issues)
-- Suggest features via [GitHub Discussions](https://github.com/yourusername/cudup/discussions)
+- Report bugs via [GitHub Issues](https://github.com/ZoCrit/cudup/issues)
+- Suggest features via [GitHub Discussions](https://github.com/ZoCrit/cudup/discussions)
 - Submit pull requests
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.

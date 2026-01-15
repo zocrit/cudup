@@ -31,8 +31,8 @@ Unacceptable behavior includes harassment, discrimination, or any form of abuse.
 Before you begin:
 - Read the [README.md](README.md) to understand what cudup does
 - Check the [roadmap](README.md#roadmap) to see what's planned
-- Look at [open issues](https://github.com/yourusername/cudup/issues) to find something to work on
-- Join [discussions](https://github.com/yourusername/cudup/discussions) to ask questions
+- Look at [open issues](https://github.com/ZoCrit/cudup/issues) to find something to work on
+- Join [discussions](https://github.com/ZoCrit/cudup/discussions) to ask questions
 
 
 ## Development Setup
@@ -50,7 +50,7 @@ Before you begin:
 ### Clone and Build
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/cudup.git
+git clone https://github.com/ZoCrit/cudup.git
 cd cudup
 
 # Build the project
@@ -105,7 +105,7 @@ We welcome many types of contributions:
 # Fork the repository on GitHub, then:
 git clone https://github.com/YOUR_USERNAME/cudup.git
 cd cudup
-git remote add upstream https://github.com/yourusername/cudup.git
+git remote add upstream https://github.com/ZoCrit/cudup.git
 ```
 
 ### 2. Create a Branch
@@ -221,19 +221,32 @@ Organize code logically:
 ```
 src/
 ├── main.rs           # CLI entry point
-├── lib.rs            # Library root
 ├── commands/         # Command implementations
 │   ├── mod.rs
 │   ├── install.rs
+│   ├── uninstall.rs
 │   ├── list.rs
-│   └── doctor.rs
-├── cuda/             # CUDA-specific logic
+│   ├── use_version.rs
+│   ├── check.rs
+│   └── manage/       # Shell integration
+│       ├── mod.rs
+│       ├── setup.rs
+│       └── remove.rs
+├── cuda/             # CUDA discovery and metadata
 │   ├── mod.rs
-│   ├── version.rs
-│   └── download.rs
-├── env/              # Environment management
+│   ├── discover.rs
+│   └── metadata.rs
+├── install/          # Installation logic
+│   ├── mod.rs
+│   ├── download.rs
+│   ├── extract.rs
+│   ├── verify.rs
+│   ├── installer.rs
+│   ├── tasks.rs
+│   └── utils.rs
+├── config/           # Configuration and paths
 │   └── mod.rs
-└── config/           # Configuration
+└── env/              # Environment management
     └── mod.rs
 ```
 
@@ -440,11 +453,11 @@ Include:
 
 **Example:**
 ```markdown
-## Bug: cudup doctor fails with permission error
+## Bug: cudup check fails with permission error
 
 **Steps to reproduce:**
 1. Install cudup
-2. Run `cudup doctor`
+2. Run `cudup check`
 3. See error
 
 **Expected:** Should run diagnostics and show status

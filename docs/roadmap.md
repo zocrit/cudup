@@ -21,6 +21,9 @@ Track development progress as features are implemented.
 - [x] Enhanced diagnostics (runtime checks, GPU detection)
 - [x] Progress bars and colored output
 - [x] Show cudup version (`cudup --version`)
+- [ ] Checksum verification (SHA256 integrity checks)
+- [ ] Resumable downloads for large installers
+- [ ] Pre-flight compatibility checking (GPU driver, compute capability)
 
 ## v1.0 - Production Ready
 
@@ -28,7 +31,10 @@ Track development progress as features are implemented.
 - [ ] TensorRT support (`--with-tensorrt`)
 - [ ] Framework compatibility checking (`cudup check pytorch/tensorflow`)
 - [ ] Configuration file support (`~/.cudup/config.toml`)
-- [ ] Self-update mechanism (`cudup manage update`)
+- [ ] Self-update mechanism (`cudup manage self-update`)
+- [ ] Remote version manifest (fetch latest available versions)
+- [ ] Proxy configuration for corporate environments
+- [ ] PATH rollback support (`cudup manage remove --rollback`)
 - [ ] Advanced installation options (`--minimal`, `--from-cache`)
 - [ ] Global vs local version modes (`cudup global`)
 - [ ] Import existing installations (`cudup import`)
