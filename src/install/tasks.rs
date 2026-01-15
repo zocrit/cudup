@@ -37,9 +37,8 @@ pub fn collect_cuda_download_tasks(
         }
 
         // Get platform-specific download info
-        let platform_info = match package_info.get_platform(TARGET_PLATFORM) {
-            Some(info) => info,
-            None => continue, // Package not available for this platform
+        let Some(platform_info) = package_info.get_platform(TARGET_PLATFORM) else {
+            continue; // Package not available for this platform
         };
 
         let download_info = match platform_info {
@@ -84,14 +83,12 @@ pub fn collect_cudnn_download_task(
     metadata: &CudaReleaseMetadata,
     cuda_variant: &str,
 ) -> Result<Option<DownloadTask>> {
-    let cudnn_pkg = match metadata.get_package("cudnn") {
-        Some(pkg) => pkg,
-        None => return Ok(None),
+    let Some(cudnn_pkg) = metadata.get_package("cudnn") else {
+        return Ok(None);
     };
 
-    let platform_info = match cudnn_pkg.get_platform(TARGET_PLATFORM) {
-        Some(info) => info,
-        None => return Ok(None),
+    let Some(platform_info) = cudnn_pkg.get_platform(TARGET_PLATFORM) else {
+        return Ok(None);
     };
 
     let download_info = match platform_info {
