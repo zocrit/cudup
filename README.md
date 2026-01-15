@@ -31,7 +31,7 @@ cudup install 11.8
 cudup use 11.8
 
 # Verify everything works
-cudup doctor
+cudup check
 
 # List installed versions
 cudup list
@@ -58,25 +58,22 @@ Managing these manually is painful. `cudup` makes it trivial.
 Track development progress as features are implemented:
 
 ### MVP (v0.1) - Core Functionality
-- [ ] Install CUDA + cuDNN together (`cudup install`)
-- [ ] List available versions (`cudup list-remote`)
-- [ ] List installed versions (`cudup list`)
-- [ ] Switch between versions (`cudup use`)
-- [ ] Shell integration (`cudup manage setup`)
-- [ ] Show current active version (`cudup current`)
-- [ ] Health diagnostics (`cudup doctor`)
-- [ ] Basic error handling and user-friendly messages
-- [ ] Linux support (Ubuntu/Debian)
+- [x] Install CUDA + cuDNN together (`cudup install`)
+- [x] List available/installed versions (`cudup list`)
+- [x] Switch between versions (`cudup use`)
+- [x] Shell integration (`cudup manage setup`)
+- [x] Health diagnostics (`cudup check`)
+- [x] Basic error handling and user-friendly messages
+- [ ] Linux support (Ubuntu/Debian) - testing in progress
 
 ### v0.5 - Enhanced Experience
 - [ ] Per-project `.cuda-version` files (`cudup local`)
-- [ ] Automatic cuDNN version matching
-- [ ] Uninstall versions (`cudup uninstall`)
+- [x] Automatic cuDNN version matching
+- [x] Uninstall versions (`cudup uninstall`)
 - [ ] Clean up old versions (`cudup clean`)
-- [ ] Enhanced diagnostics (runtime checks, GPU detection)
-- [ ] Disk space management and warnings
-- [ ] Progress bars and colored output
-- [ ] Show cudup version (`cudup --version`)
+- [x] Enhanced diagnostics (runtime checks, GPU detection)
+- [x] Progress bars and colored output
+- [x] Show cudup version (`cudup --version`)
 
 ### v1.0 - Production Ready
 - [ ] NCCL support (`--with-nccl`)
@@ -107,12 +104,11 @@ Track development progress as features are implemented:
 
 ## Documentation
 
-> Coming soon
+Full documentation available at **[zocrit.github.io/cudup](https://zocrit.github.io/cudup/)**
 
-- [Installation Guide](docs/installation.md)
-- [Quick Start](docs/quickstart.md)
-- [Command Reference](docs/commands.md)
-- [Troubleshooting](docs/troubleshooting.md)
+- [Installation Guide](https://zocrit.github.io/cudup/getting-started/installation/)
+- [Quick Start](https://zocrit.github.io/cudup/getting-started/quickstart/)
+- [Command Reference](https://zocrit.github.io/cudup/commands/)
 
 ## Contributing
 

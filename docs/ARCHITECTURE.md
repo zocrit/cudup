@@ -1,3 +1,5 @@
+# Architecture
+
 ## 1. High-Level Design Philosophy
 
 `cudup` differs from standard NVIDIA installers in three key ways:
