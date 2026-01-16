@@ -2,7 +2,7 @@ mod remove;
 mod setup;
 
 use anyhow::{Context, Result, bail};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use crate::config::cudup_home;
@@ -12,7 +12,7 @@ pub use remove::remove;
 pub use setup::setup;
 
 // Shell integration script (identical for bash and zsh)
-const SHELL_ENV: &str = r#"# cudup shell integration
+const BASH_ZSH_ENV: &str = r#"# cudup shell integration
 cudup() {
     if [[ "$1" == "use" ]]; then
         eval "$(command cudup use "${@:2}")"
@@ -22,29 +22,50 @@ cudup() {
 }
 "#;
 
-const SOURCE_LINE: &str = r#". "$HOME/.cudup/env""#;
+// Fish shell integration script
+const FISH_ENV: &str = r#"# cudup shell integration
+function cudup
+    if test (count $argv) -gt 0 && test "$argv[1]" = "use"
+        eval (command cudup use $argv[2..])
+    else
+        command cudup $argv
+    end
+end
+"#;
+
 const CUDUP_COMMENT: &str = "# cudup";
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Shell {
     Bash,
     Zsh,
+    Fish,
 }
 
 impl Shell {
     pub fn detect() -> Result<Self> {
-        let shell = env::var("SHELL").context("Could not detect shell from $SHELL")?;
-        if shell.contains("zsh") {
-            Ok(Shell::Zsh)
-        } else if shell.contains("bash") {
-            Ok(Shell::Bash)
-        } else {
-            bail!("Unsupported shell: {}. Only bash and zsh are supported.", shell)
+        let shell_path = env::var("SHELL").context("Could not detect shell from $SHELL")?;
+        let shell_name = Path::new(&shell_path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .context("Could not determine shell name from $SHELL")?;
+
+        match shell_name {
+            "fish" => Ok(Shell::Fish),
+            "zsh" => Ok(Shell::Zsh),
+            "bash" => Ok(Shell::Bash),
+            _ => bail!(
+                "Unsupported shell: {}. Supported shells: bash, zsh, fish.",
+                shell_path
+            ),
         }
     }
 
     pub fn env_content(&self) -> &'static str {
-        SHELL_ENV
+        match self {
+            Shell::Bash | Shell::Zsh => BASH_ZSH_ENV,
+            Shell::Fish => FISH_ENV,
+        }
     }
 
     pub fn rc_file(&self) -> Result<PathBuf> {
@@ -52,19 +73,36 @@ impl Shell {
         Ok(match self {
             Shell::Bash => home.join(".bashrc"),
             Shell::Zsh => home.join(".zshrc"),
+            Shell::Fish => home.join(".config/fish/config.fish"),
         })
+    }
+
+    pub fn source_line(&self) -> String {
+        let env_file = self.env_file_name();
+        match self {
+            Shell::Bash | Shell::Zsh => format!(r#". "$HOME/.cudup/{}""#, env_file),
+            Shell::Fish => format!(r#"source "$HOME/.cudup/{}""#, env_file),
+        }
+    }
+
+    pub fn env_file_name(&self) -> &'static str {
+        match self {
+            Shell::Bash | Shell::Zsh => "env",
+            Shell::Fish => "env.fish",
+        }
     }
 
     pub fn name(&self) -> &'static str {
         match self {
             Shell::Bash => "bash",
             Shell::Zsh => "zsh",
+            Shell::Fish => "fish",
         }
     }
 }
 
-pub fn env_file_path() -> Result<PathBuf> {
-    Ok(cudup_home()?.join("env"))
+pub fn env_file_path(shell: &Shell) -> Result<PathBuf> {
+    Ok(cudup_home()?.join(shell.env_file_name()))
 }
 
 pub fn is_rc_configured(rc_path: &PathBuf) -> Result<bool> {

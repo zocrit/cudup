@@ -4,11 +4,11 @@ use std::io::Write;
 
 use crate::config::cudup_home;
 
-use super::{env_file_path, is_rc_configured, prompt_confirmation, Shell, SOURCE_LINE};
+use super::{env_file_path, is_rc_configured, prompt_confirmation, Shell};
 
 pub fn setup() -> Result<()> {
     let shell = Shell::detect()?;
-    let env_path = env_file_path()?;
+    let env_path = env_file_path(&shell)?;
     let rc_path = shell.rc_file()?;
 
     println!("Detected shell: {}\n", shell.name());
@@ -85,7 +85,7 @@ pub fn setup() -> Result<()> {
 
         writeln!(rc_file)?;
         writeln!(rc_file, "# cudup")?;
-        writeln!(rc_file, "{}", SOURCE_LINE)?;
+        writeln!(rc_file, "{}", shell.source_line())?;
         println!("Updated {}", rc_path.display());
     }
 

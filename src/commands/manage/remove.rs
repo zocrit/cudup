@@ -5,7 +5,7 @@ use super::{Shell, env_file_path, is_rc_configured, prompt_confirmation, remove_
 
 pub fn remove() -> Result<()> {
     let shell = Shell::detect()?;
-    let env_path = env_file_path()?;
+    let env_path = env_file_path(&shell)?;
     let rc_path = shell.rc_file()?;
 
     println!("Detected shell: {}\n", shell.name());
