@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use log;
 
 use crate::cuda::discover::{CUDA_BASE_URL, CUDNN_BASE_URL, find_newest_compatible_cudnn};
 use crate::cuda::metadata::{CudaReleaseMetadata, PlatformInfo};

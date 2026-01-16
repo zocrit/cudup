@@ -67,19 +67,19 @@ fn check_cudup_home() -> CheckResult {
         }
         Ok(path) => CheckResult::warning(
             "cudup directory",
-            &format!(
+            format!(
                 "{} does not exist (run 'cudup manage setup')",
                 path.display()
             ),
         ),
-        Err(e) => CheckResult::error("cudup directory", &e.to_string()),
+        Err(e) => CheckResult::error("cudup directory", e.to_string()),
     }
 }
 
 fn check_shell_integration() -> CheckResult {
     let env_path = match cudup_home() {
         Ok(home) => home.join("env"),
-        Err(e) => return CheckResult::error("shell integration", &e.to_string()),
+        Err(e) => return CheckResult::error("shell integration", e.to_string()),
     };
 
     if env_path.exists() {
@@ -95,7 +95,7 @@ fn check_shell_integration() -> CheckResult {
 fn check_installed_versions() -> CheckResult {
     let versions = match get_installed_versions() {
         Ok(v) => v,
-        Err(e) => return CheckResult::error("installed versions", &e.to_string()),
+        Err(e) => return CheckResult::error("installed versions", e.to_string()),
     };
 
     if versions.is_empty() {
@@ -122,7 +122,7 @@ fn check_active_version() -> CheckResult {
             } else {
                 CheckResult::error(
                     "active version",
-                    &format!("CUDA_HOME={} does not exist", cuda_home),
+                    format!("CUDA_HOME={} does not exist", cuda_home),
                 )
             }
         }

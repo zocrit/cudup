@@ -113,14 +113,14 @@ fn uninstall_all(force: bool) -> Result<()> {
     });
 
     // If active version exists and --force not provided, error out
-    if let Some(active) = active_version {
-        if !force {
-            bail!(
-                "Cannot remove all versions - CUDA {} is currently active.\n\
+    if let Some(active) = active_version
+        && !force
+    {
+        bail!(
+            "Cannot remove all versions - CUDA {} is currently active.\n\
                  Use --force to remove anyway, or switch versions first.",
-                active
-            );
-        }
+            active
+        );
     }
 
     // Calculate total size
