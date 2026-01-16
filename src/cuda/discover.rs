@@ -5,8 +5,9 @@ use std::collections::BTreeSet;
 use std::sync::LazyLock;
 use std::time::Duration;
 
-static VERSION_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r"redistrib_(\d+\.\d+\.\d+)\.json").unwrap());
+static VERSION_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r"redistrib_(\d+\.\d+\.\d+)\.json").expect("invalid version regex pattern")
+});
 
 /// Shared HTTP client for connection pooling and reuse
 static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| {

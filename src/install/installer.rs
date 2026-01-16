@@ -23,7 +23,7 @@ fn create_progress_bar(mp: &MultiProgress, size: u64, prefix: String) -> Progres
     pb.set_style(
         ProgressStyle::default_bar()
             .template("{prefix:>12.green.bold} [{bar:30.green/dim}] {bytes:>10}/{total_bytes:<10} {bytes_per_sec:>12} ({eta})")
-            .unwrap()
+            .expect("invalid progress bar template")
             .progress_chars("━━╸"),
     );
     pb.set_prefix(prefix);
@@ -36,7 +36,7 @@ fn create_spinner(mp: &MultiProgress, message: String) -> ProgressBar {
     spinner.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap(),
+            .expect("invalid spinner template"),
     );
     spinner.set_message(message);
     spinner.enable_steady_tick(std::time::Duration::from_millis(100));
