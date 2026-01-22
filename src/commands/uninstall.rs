@@ -1,11 +1,11 @@
 use anyhow::{Context, Result, bail};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use crate::config::{get_installed_versions, prompt_confirmation, versions_dir};
 use crate::fetch::format_size;
 
-fn dir_size(path: &std::path::Path) -> Result<u64> {
+fn dir_size(path: &Path) -> Result<u64> {
     let mut size = 0;
     if path.is_dir() {
         for entry in fs::read_dir(path)? {
@@ -25,30 +25,25 @@ fn get_active_version_path() -> Option<PathBuf> {
     env::var("CUDA_HOME").ok().map(PathBuf::from)
 }
 
-fn is_active_version(version_path: &std::path::Path) -> bool {
-    get_active_version_path()
-        .map(
-            |cuda_path| match (cuda_path.canonicalize(), version_path.canonicalize()) {
-                (Ok(a), Ok(b)) => a == b,
-                _ => cuda_path == version_path,
-            },
-        )
-        .unwrap_or(false)
+fn is_active_version(version_path: &Path) -> bool {
+    get_active_version_path().is_some_and(|cuda_path| {
+        match (cuda_path.canonicalize(), version_path.canonicalize()) {
+            (Ok(a), Ok(b)) => a == b,
+            _ => cuda_path == version_path,
+        }
+    })
 }
 
 fn uninstall_single(version: &str, force: bool) -> Result<()> {
     let versions_dir = versions_dir()?;
     let version_path = versions_dir.join(version);
 
-    // Check if version is installed
     if !version_path.exists() {
         bail!("CUDA {} is not installed", version);
     }
 
-    // Check if it's the active version
     let is_active = is_active_version(&version_path);
 
-    // Calculate size
     let size = dir_size(&version_path)?;
 
     println!("This will remove CUDA {}:", version);
@@ -62,7 +57,6 @@ fn uninstall_single(version: &str, force: bool) -> Result<()> {
 
     println!();
 
-    // Ask for confirmation unless --force
     if !force {
         let prompt = if is_active {
             "Remove active version anyway?"
@@ -76,7 +70,6 @@ fn uninstall_single(version: &str, force: bool) -> Result<()> {
         }
     }
 
-    // Remove the directory with proper error handling for race conditions
     match fs::remove_dir_all(&version_path) {
         Ok(()) => {
             println!();
@@ -108,13 +101,11 @@ fn uninstall_all(force: bool) -> Result<()> {
         return Ok(());
     }
 
-    // Check if any version is active
     let active_version = versions.iter().find(|v| {
         let version_path = versions_dir.join(v);
         is_active_version(&version_path)
     });
 
-    // If active version exists and --force not provided, error out
     if let Some(active) = active_version
         && !force
     {
@@ -125,7 +116,6 @@ fn uninstall_all(force: bool) -> Result<()> {
         );
     }
 
-    // Calculate total size
     let mut total_size = 0u64;
     println!("This will remove {} CUDA version(s):", versions.len());
     for version in &versions {
@@ -151,13 +141,11 @@ fn uninstall_all(force: bool) -> Result<()> {
 
     println!();
 
-    // Ask for confirmation unless --force
     if !force && !prompt_confirmation("Proceed with uninstall?")? {
         println!("Uninstall cancelled.");
         return Ok(());
     }
 
-    // Remove all versions with proper error handling for race conditions
     let mut removed_count = 0;
     for version in &versions {
         let version_path = versions_dir.join(version);
@@ -187,11 +175,9 @@ fn uninstall_all(force: bool) -> Result<()> {
 }
 
 pub fn uninstall(version: Option<&str>, force: bool, all: bool) -> Result<()> {
-    if all {
-        uninstall_all(force)
-    } else if let Some(v) = version {
-        uninstall_single(v, force)
-    } else {
-        bail!("Please specify a version or use --all")
+    match (all, version) {
+        (true, _) => uninstall_all(force),
+        (false, Some(v)) => uninstall_single(v, force),
+        (false, None) => bail!("Please specify a version or use --all"),
     }
 }
