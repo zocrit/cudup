@@ -11,7 +11,8 @@ pub fn setup() -> Result<()> {
     let env_path = env_file_path(&shell)?;
     let rc_path = shell.rc_file()?;
 
-    println!("Detected shell: {}\n", shell.name());
+    println!("Detected shell: {}", shell.name());
+    println!();
 
     // Check if already configured
     let rc_configured = is_rc_configured(&rc_path)?;
@@ -34,14 +35,16 @@ pub fn setup() -> Result<()> {
             rc_path.display(),
             env_path.display()
         );
-        println!("This will recreate the env file.\n");
+        println!("This will recreate the env file.");
+        println!();
     } else if env_exists {
         println!(
             "Note: {} exists but {} doesn't source it.",
             env_path.display(),
             rc_path.display()
         );
-        println!("This will update both files.\n");
+        println!("This will update both files.");
+        println!();
     }
 
     // Show what will be modified
@@ -74,7 +77,8 @@ pub fn setup() -> Result<()> {
 
     // Write env file
     fs::write(&env_path, shell.env_content())?;
-    println!("\nCreated {}", env_path.display());
+    println!();
+    println!("Created {}", env_path.display());
 
     // Append source line to rc file only if not already there
     if !rc_configured {
@@ -89,9 +93,11 @@ pub fn setup() -> Result<()> {
         println!("Updated {}", rc_path.display());
     }
 
-    println!("\nSetup complete!");
+    println!();
+    println!("Setup complete!");
     if !rc_configured {
-        println!("\nTo start using cudup, either:");
+        println!();
+        println!("To start using cudup, either:");
         println!("  - Restart your terminal, or");
         println!("  - Run: source {}", rc_path.display());
     }

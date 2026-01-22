@@ -79,7 +79,8 @@ fn uninstall_single(version: &str, force: bool) -> Result<()> {
     // Remove the directory with proper error handling for race conditions
     match fs::remove_dir_all(&version_path) {
         Ok(()) => {
-            println!("\nRemoved CUDA {}", version);
+            println!();
+            println!("Removed CUDA {}", version);
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             bail!("CUDA {} was already removed by another process", version);
@@ -90,7 +91,8 @@ fn uninstall_single(version: &str, force: bool) -> Result<()> {
     }
 
     if is_active {
-        println!("\nNote: Run 'cudup use <version>' to activate a different version,");
+        println!();
+        println!("Note: Run 'cudup use <version>' to activate a different version,");
         println!("or start a new shell to clear the stale CUDA_HOME.");
     }
 
@@ -138,7 +140,8 @@ fn uninstall_all(force: bool) -> Result<()> {
         };
         println!("  - {}{} ({})", version, active_marker, format_size(size));
     }
-    println!("\nTotal: {}", format_size(total_size));
+    println!();
+    println!("Total: {}", format_size(total_size));
 
     if active_version.is_some() {
         println!();
@@ -172,10 +175,12 @@ fn uninstall_all(force: bool) -> Result<()> {
         }
     }
 
-    println!("\nRemoved {} version(s)", removed_count);
+    println!();
+    println!("Removed {} version(s)", removed_count);
 
     if active_version.is_some() {
-        println!("\nNote: Start a new shell to clear the stale CUDA_HOME.");
+        println!();
+        println!("Note: Start a new shell to clear the stale CUDA_HOME.");
     }
 
     Ok(())

@@ -22,7 +22,8 @@ pub async fn list_available_versions() -> Result<()> {
         println!("{} {:>10}", if installed { "*" } else { " " }, version);
     });
 
-    println!("\n* = installed");
+    println!();
+    println!("* = installed");
 
     Ok(())
 }

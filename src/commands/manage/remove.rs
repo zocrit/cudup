@@ -8,7 +8,8 @@ pub fn remove() -> Result<()> {
     let env_path = env_file_path(&shell)?;
     let rc_path = shell.rc_file()?;
 
-    println!("Detected shell: {}\n", shell.name());
+    println!("Detected shell: {}", shell.name());
+    println!();
 
     let rc_configured = is_rc_configured(&rc_path)?;
     let env_exists = env_path.exists();
@@ -18,7 +19,6 @@ pub fn remove() -> Result<()> {
         return Ok(());
     }
 
-    // Show what will be removed
     println!("This will:");
     if env_exists {
         println!("  - Delete: {}", env_path.display());
@@ -37,7 +37,8 @@ pub fn remove() -> Result<()> {
     // Remove env file
     if env_exists {
         fs::remove_file(&env_path)?;
-        println!("\nDeleted {}", env_path.display());
+        println!();
+        println!("Deleted {}", env_path.display());
     }
 
     // Remove cudup lines from rc file
@@ -48,8 +49,10 @@ pub fn remove() -> Result<()> {
         println!("Updated {}", rc_path.display());
     }
 
-    println!("\nRemoval complete!");
-    println!("\nTo apply changes, either:");
+    println!();
+    println!("Removal complete!");
+    println!();
+    println!("To apply changes, either:");
     println!("  - Restart your terminal, or");
     println!("  - Run: source {}", rc_path.display());
 

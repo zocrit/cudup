@@ -161,8 +161,10 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
     }
 
     info!("CUDA {} installed successfully!", version);
-    println!("\nTo use this version, run:");
-    println!("  cudup use {}\n", version);
+    println!();
+    println!("To use this version, run:");
+    println!("  cudup use {}", version);
+    println!();
 
     Ok(())
 }

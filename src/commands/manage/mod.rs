@@ -11,7 +11,6 @@ pub use crate::config::prompt_confirmation;
 pub use remove::remove;
 pub use setup::setup;
 
-// Shell integration script (identical for bash and zsh)
 const BASH_ZSH_ENV: &str = r#"# cudup shell integration
 cudup() {
     if [[ "$1" == "use" ]]; then
@@ -22,7 +21,6 @@ cudup() {
 }
 "#;
 
-// Fish shell integration script
 const FISH_ENV: &str = r#"# cudup shell integration
 function cudup
     if test (count $argv) -gt 0 && test "$argv[1]" = "use"
@@ -113,7 +111,6 @@ pub fn is_rc_configured(rc_path: &PathBuf) -> Result<bool> {
     Ok(content.contains(".cudup/env"))
 }
 
-/// Removes cudup-related lines from the rc file content
 pub fn remove_cudup_lines(content: &str) -> String {
     let lines: Vec<&str> = content.lines().collect();
     let mut result = Vec::new();
@@ -147,7 +144,6 @@ pub fn remove_cudup_lines(content: &str) -> String {
         i += 1;
     }
 
-    // Remove trailing empty lines
     while result.last().map(|s| s.is_empty()).unwrap_or(false) {
         result.pop();
     }

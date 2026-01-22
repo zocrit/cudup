@@ -194,7 +194,8 @@ fn check_gpu() -> CheckResult {
 }
 
 pub fn check() -> Result<()> {
-    println!("cudup check\n");
+    println!("cudup check");
+    println!();
 
     let checks = vec![
         check_cudup_home(),
