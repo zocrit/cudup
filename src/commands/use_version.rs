@@ -1,12 +1,12 @@
 use anyhow::{Result, bail};
 use log::info;
 
-use crate::install;
+use crate::fetch;
 
 /// Generates shell commands to activate a specific CUDA version
 pub fn use_version(version: &str) -> Result<()> {
     // Check if the version is installed locally
-    let install_dir = install::version_install_dir(version)?;
+    let install_dir = fetch::version_install_dir(version)?;
     if !install_dir.exists() {
         bail!(
             "CUDA {} is not installed.\n\

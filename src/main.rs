@@ -5,7 +5,7 @@ use std::io::Write;
 mod commands;
 mod config;
 mod cuda;
-mod install;
+mod fetch;
 
 use cuda::CudaVersion;
 
@@ -73,7 +73,12 @@ async fn main() -> Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .format(|buf, record| {
             let level_style = buf.default_level_style(record.level());
-            writeln!(buf, "{level_style}{}{level_style:#} {}", record.level(), record.args())
+            writeln!(
+                buf,
+                "{level_style}{}{level_style:#} {}",
+                record.level(),
+                record.args()
+            )
         })
         .init();
 
@@ -81,9 +86,11 @@ async fn main() -> Result<()> {
 
     match &cli.command {
         Commands::Install { version } => commands::install(version.as_str()).await?,
-        Commands::Uninstall { version, force, all } => {
-            commands::uninstall(version.as_deref(), *force, *all)?
-        }
+        Commands::Uninstall {
+            version,
+            force,
+            all,
+        } => commands::uninstall(version.as_deref(), *force, *all)?,
         Commands::List => commands::list_available_versions().await?,
         Commands::Check => commands::check()?,
         Commands::Use { version } => commands::use_version(version.as_str())?,

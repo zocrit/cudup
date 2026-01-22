@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::{env, fs};
 
 use crate::config::{get_installed_versions, prompt_confirmation, versions_dir};
-use crate::install::format_size;
+use crate::fetch::format_size;
 
 fn dir_size(path: &std::path::Path) -> Result<u64> {
     let mut size = 0;

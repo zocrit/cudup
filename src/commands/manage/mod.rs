@@ -41,7 +41,6 @@ pub enum Shell {
 }
 
 impl Shell {
-    #[must_use]
     pub fn detect() -> Result<Self> {
         let shell_path = env::var("SHELL").context("Could not detect shell from $SHELL")?;
         let shell_name = Path::new(&shell_path)
@@ -68,7 +67,6 @@ impl Shell {
         }
     }
 
-    #[must_use]
     pub fn rc_file(&self) -> Result<PathBuf> {
         let home = dirs::home_dir().context("Could not determine home directory")?;
         Ok(match self {
@@ -114,7 +112,6 @@ pub struct ManageContext {
 }
 
 impl ManageContext {
-    #[must_use]
     pub fn detect() -> Result<Self> {
         let shell = Shell::detect()?;
         let env_path = env_file_path(shell)?;
@@ -137,12 +134,10 @@ impl ManageContext {
     }
 }
 
-#[must_use]
 pub fn env_file_path(shell: Shell) -> Result<PathBuf> {
     Ok(cudup_home()?.join(shell.env_file_name()))
 }
 
-#[must_use]
 pub fn is_rc_configured(rc_path: &Path) -> Result<bool> {
     if !rc_path.exists() {
         return Ok(false);
@@ -173,7 +168,7 @@ pub fn remove_cudup_lines(content: &str) -> String {
                 i += 1;
             }
             // Skip any blank line that preceded the comment (remove trailing blank)
-            if result.last().map_or(false, |s| s.is_empty()) {
+            if result.last().is_some_and(|s: &&str| s.is_empty()) {
                 result.pop();
             }
             continue;
@@ -189,7 +184,7 @@ pub fn remove_cudup_lines(content: &str) -> String {
         i += 1;
     }
 
-    while result.last().map(|s| s.is_empty()).unwrap_or(false) {
+    while result.last().is_some_and(|s: &&str| s.is_empty()) {
         result.pop();
     }
 

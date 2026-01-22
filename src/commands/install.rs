@@ -1,6 +1,6 @@
-use crate::install;
+use crate::fetch;
 use anyhow::Result;
 
 pub async fn install(version: &str) -> Result<()> {
-    install::install_cuda_version(version).await
+    fetch::install_cuda_version(version).await
 }
