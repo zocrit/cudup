@@ -63,7 +63,7 @@ impl CheckResult {
 fn check_cudup_home() -> CheckResult {
     match cudup_home() {
         Ok(path) if path.exists() => {
-            CheckResult::ok("cudup directory", Some(&path.display().to_string()))
+            CheckResult::ok("cudup directory", Some(path.display().to_string()))
         }
         Ok(path) => CheckResult::warning(
             "cudup directory",
@@ -98,14 +98,12 @@ fn check_installed_versions() -> CheckResult {
         Err(e) => return CheckResult::error("installed versions", e.to_string()),
     };
 
-    if versions.is_empty() {
-        CheckResult::ok("installed versions", Some("none"))
+    let detail = if versions.is_empty() {
+        "none".to_string()
     } else {
-        CheckResult::ok(
-            "installed versions",
-            Some(&format!("{} ({})", versions.len(), versions.join(", "))),
-        )
-    }
+        format!("{} ({})", versions.len(), versions.join(", "))
+    };
+    CheckResult::ok("installed versions", Some(detail))
 }
 
 fn check_active_version() -> CheckResult {
@@ -165,7 +163,7 @@ fn check_nvidia_driver() -> CheckResult {
                 .next()
                 .unwrap_or("found")
                 .to_string();
-            CheckResult::ok("nvidia driver", Some(&format!("v{}", version)))
+            CheckResult::ok("nvidia driver", Some(format!("v{}", version)))
         }
         Ok(_) => CheckResult::error("nvidia driver", "nvidia-smi failed"),
         Err(_) => CheckResult::warning("nvidia driver", "nvidia-smi not found"),
@@ -181,12 +179,11 @@ fn check_gpu() -> CheckResult {
         Ok(output) if output.status.success() => {
             let output_str = String::from_utf8_lossy(&output.stdout);
             let gpus: Vec<&str> = output_str.trim().lines().collect();
-            let gpu_info = if gpus.len() == 1 {
-                gpus[0].to_string()
-            } else {
-                format!("{} GPUs", gpus.len())
+            let gpu_info = match gpus.as_slice() {
+                [single] => (*single).to_string(),
+                multiple => format!("{} GPUs", multiple.len()),
             };
-            CheckResult::ok("gpu", Some(&gpu_info))
+            CheckResult::ok("gpu", Some(gpu_info))
         }
         Ok(_) => CheckResult::warning("gpu", "could not detect"),
         Err(_) => CheckResult::warning("gpu", "nvidia-smi not available"),
@@ -218,12 +215,10 @@ pub fn check() -> Result<()> {
     });
 
     println!();
-    if errors > 0 {
-        println!("{} error(s), {} warning(s)", errors, warnings);
-    } else if warnings > 0 {
-        println!("No errors, {} warning(s)", warnings);
-    } else {
-        println!("All checks passed!");
+    match (errors > 0, warnings > 0) {
+        (true, _) => println!("{} error(s), {} warning(s)", errors, warnings),
+        (false, true) => println!("No errors, {} warning(s)", warnings),
+        (false, false) => println!("All checks passed!"),
     }
 
     Ok(())
