@@ -18,7 +18,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Install a specific CUDA version
     Install {
         #[arg(
             help = "CUDA version to install (e.g., 12.4.1)",
@@ -27,24 +26,21 @@ enum Commands {
         )]
         version: CudaVersion,
     },
-    /// Uninstall a CUDA version
     Uninstall {
         #[arg(
             help = "CUDA version to uninstall (e.g., 12.4.1)",
             value_name = "VERSION",
-            required_unless_present = "all"
+            required_unless_present = "all",
+            value_parser = clap::value_parser!(CudaVersion)
         )]
-        version: Option<String>,
+        version: Option<CudaVersion>,
         #[arg(short, long, help = "Skip confirmation prompt")]
         force: bool,
         #[arg(short, long, help = "Uninstall all versions")]
         all: bool,
     },
-    /// List available CUDA versions
     List,
-    /// Verify cudup configuration and CUDA installation
     Check,
-    /// Activate a specific CUDA version
     Use {
         #[arg(
             help = "CUDA version to activate (e.g., 12.4.1)",
@@ -53,7 +49,6 @@ enum Commands {
         )]
         version: CudaVersion,
     },
-    /// Manage cudup installation
     Manage {
         #[command(subcommand)]
         command: ManageCommand,
@@ -62,9 +57,7 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum ManageCommand {
-    /// Configure shell integration
     Setup,
-    /// Remove shell integration
     Remove,
 }
 
@@ -90,7 +83,7 @@ async fn main() -> Result<()> {
             version,
             force,
             all,
-        } => commands::uninstall(version.as_deref(), *force, *all)?,
+        } => commands::uninstall(version.as_ref().map(CudaVersion::as_str), *force, *all)?,
         Commands::List => commands::list_available_versions().await?,
         Commands::Check => commands::check()?,
         Commands::Use { version } => commands::use_version(version.as_str())?,
