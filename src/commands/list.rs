@@ -15,12 +15,12 @@ pub async fn list_available_versions() -> Result<()> {
     let versions_dir = config::versions_dir().ok();
 
     println!("Available CUDA versions:");
-    versions.iter().for_each(|version| {
+    for version in &versions {
         let installed = versions_dir
             .as_ref()
             .is_some_and(|dir| dir.join(version).exists());
         println!("{} {:>10}", if installed { "*" } else { " " }, version);
-    });
+    }
 
     println!();
     println!("* = installed");

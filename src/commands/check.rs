@@ -111,7 +111,6 @@ fn check_active_version() -> CheckResult {
         Ok(cuda_home) => {
             let path = PathBuf::from(&cuda_home);
             if path.exists() {
-                // Try to extract version from path
                 let version = path
                     .file_name()
                     .and_then(|n| n.to_str())
@@ -132,7 +131,6 @@ fn check_nvcc() -> CheckResult {
     match Command::new("nvcc").arg("--version").output() {
         Ok(output) if output.status.success() => {
             let stdout = String::from_utf8_lossy(&output.stdout);
-            // Extract version from output like "Cuda compilation tools, release 12.4, V12.4.99"
             let version = stdout
                 .lines()
                 .find(|line| line.contains("release"))

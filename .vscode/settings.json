@@ -3,6 +3,7 @@
     "cccl",
     "cudart",
     "indicatif",
+    "noheader",
     "nvcc"
   ]
 }
