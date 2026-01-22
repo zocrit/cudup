@@ -9,7 +9,6 @@ static VERSION_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
     regex::Regex::new(r"redistrib_(\d+\.\d+\.\d+)\.json").expect("invalid version regex pattern")
 });
 
-/// Shared HTTP client for connection pooling and reuse
 static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| {
     Client::builder()
         .timeout(Duration::from_secs(30))
@@ -21,7 +20,6 @@ static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| {
 pub const CUDA_BASE_URL: &str = "https://developer.download.nvidia.com/compute/cuda/redist";
 pub const CUDNN_BASE_URL: &str = "https://developer.download.nvidia.com/compute/cudnn/redist";
 
-/// Generic function to fetch available versions from a redist index
 async fn fetch_available_versions(base_url: &str, product: &str) -> Result<BTreeSet<String>> {
     let response = HTTP_CLIENT
         .get(format!("{}/", base_url))
@@ -34,10 +32,9 @@ async fn fetch_available_versions(base_url: &str, product: &str) -> Result<BTree
         .await
         .with_context(|| format!("Failed to read {} versions response", product))?;
 
-    parse_available_versions(&body)
+    Ok(parse_available_versions(&body))
 }
 
-/// Generic function to fetch version metadata from a redist index
 async fn fetch_version_metadata(
     base_url: &str,
     product: &str,
@@ -67,27 +64,21 @@ async fn fetch_version_metadata(
         .with_context(|| format!("Failed to parse {} {} metadata JSON", product, version))
 }
 
-/// Fetches the list of available CUDA versions from NVIDIA's redist index
 pub async fn fetch_available_cuda_versions() -> Result<BTreeSet<String>> {
     fetch_available_versions(CUDA_BASE_URL, "CUDA").await
 }
 
-/// Fetches the list of available cuDNN versions from NVIDIA's redist index
 pub async fn fetch_available_cudnn_versions() -> Result<BTreeSet<String>> {
     fetch_available_versions(CUDNN_BASE_URL, "cuDNN").await
 }
 
-/// Parses version strings from the HTML directory listing
-pub fn parse_available_versions(html: &str) -> Result<BTreeSet<String>> {
-    let versions = VERSION_REGEX
+pub fn parse_available_versions(html: &str) -> BTreeSet<String> {
+    VERSION_REGEX
         .captures_iter(html)
         .filter_map(|cap| cap.get(1).map(|m| m.as_str().to_string()))
-        .collect();
-
-    Ok(versions)
+        .collect()
 }
 
-/// Fetches the detailed metadata JSON for a specific CUDA version
 pub async fn fetch_cuda_version_metadata(version: &str) -> Result<CudaReleaseMetadata> {
     fetch_version_metadata(CUDA_BASE_URL, "CUDA", version).await
 }
@@ -103,20 +94,21 @@ pub async fn find_newest_compatible_cudnn(cuda_version: &str) -> Result<Option<S
         .next()
         .context("Invalid CUDA version format")?;
 
+    let cuda_major_str = cuda_major.to_string();
     let all_cudnn_versions = fetch_available_cudnn_versions().await?;
 
-    // Iterate from newest to oldest (reverse order since BTreeSet is sorted ascending)
     for cudnn_version in all_cudnn_versions.iter().rev() {
         let metadata = match fetch_cudnn_version_metadata(cudnn_version).await {
             Ok(m) => m,
             Err(_) => continue,
         };
 
-        // Check if this cuDNN supports our CUDA major version
-        if let Some(cudnn_pkg) = metadata.get_package("cudnn")
-            && let Some(variants) = &cudnn_pkg.cuda_variant
-            && variants.contains(&cuda_major.to_string())
-        {
+        let is_compatible = metadata
+            .get_package("cudnn")
+            .and_then(|pkg| pkg.cuda_variant.as_ref())
+            .is_some_and(|variants| variants.contains(&cuda_major_str));
+
+        if is_compatible {
             return Ok(Some(cudnn_version.clone()));
         }
     }
@@ -124,7 +116,6 @@ pub async fn find_newest_compatible_cudnn(cuda_version: &str) -> Result<Option<S
     Ok(None)
 }
 
-/// Fetches the detailed metadata JSON for a specific cuDNN version
 pub async fn fetch_cudnn_version_metadata(version: &str) -> Result<CudaReleaseMetadata> {
     fetch_version_metadata(CUDNN_BASE_URL, "cuDNN", version).await
 }
@@ -151,7 +142,7 @@ mod tests {
 </html>
         "#;
 
-        let versions = parse_available_versions(html).unwrap();
+        let versions = parse_available_versions(html);
         assert_eq!(versions.len(), 3);
         assert!(versions.contains("11.8.0"));
         assert!(versions.contains("12.0.0"));
@@ -161,7 +152,7 @@ mod tests {
     #[test]
     fn test_parse_available_versions_empty() {
         let html = "<html><body>No versions here</body></html>";
-        let versions = parse_available_versions(html).unwrap();
+        let versions = parse_available_versions(html);
         assert!(versions.is_empty());
     }
 
@@ -173,7 +164,7 @@ mod tests {
 <a href="redistrib_12.0.0.json">redistrib_12.0.0.json</a>
         "#;
 
-        let versions = parse_available_versions(html).unwrap();
+        let versions = parse_available_versions(html);
         let versions_vec: Vec<&String> = versions.iter().collect();
         // BTreeSet keeps them sorted
         assert_eq!(versions_vec[0], "11.8.0");
@@ -191,7 +182,7 @@ mod tests {
 <a href="redistrib_12.0.0.json">redistrib_12.0.0.json</a>
         "#;
 
-        let versions = parse_available_versions(html).unwrap();
+        let versions = parse_available_versions(html);
         assert_eq!(versions.len(), 2);
         assert!(versions.contains("12.4.1"));
         assert!(versions.contains("12.0.0"));
