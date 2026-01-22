@@ -3,23 +3,19 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
-/// Returns the base cudup directory (~/.cudup)
 pub fn cudup_home() -> Result<PathBuf> {
     let home = dirs::home_dir().context("Could not determine home directory")?;
     Ok(home.join(".cudup"))
 }
 
-/// Returns the versions directory (~/.cudup/versions)
 pub fn versions_dir() -> Result<PathBuf> {
     Ok(cudup_home()?.join("versions"))
 }
 
-/// Returns the downloads directory (~/.cudup/downloads)
 pub fn downloads_dir() -> Result<PathBuf> {
     Ok(cudup_home()?.join("downloads"))
 }
 
-/// Prompt user for confirmation with [y/N] style prompt
 pub fn prompt_confirmation(message: &str) -> Result<bool> {
     print!("{} [y/N] ", message);
     io::stdout().flush()?;
@@ -30,7 +26,6 @@ pub fn prompt_confirmation(message: &str) -> Result<bool> {
     Ok(input.trim().eq_ignore_ascii_case("y"))
 }
 
-/// Get list of installed CUDA versions
 pub fn get_installed_versions() -> Result<Vec<String>> {
     let versions_path = versions_dir()?;
 

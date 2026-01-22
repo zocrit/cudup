@@ -4,7 +4,7 @@ use std::io::Write;
 
 use crate::config::cudup_home;
 
-use super::{env_file_path, is_rc_configured, prompt_confirmation, Shell};
+use super::{Shell, env_file_path, is_rc_configured, prompt_confirmation};
 
 pub fn setup() -> Result<()> {
     let shell = Shell::detect()?;
@@ -14,40 +14,43 @@ pub fn setup() -> Result<()> {
     println!("Detected shell: {}", shell.name());
     println!();
 
-    // Check if already configured
     let rc_configured = is_rc_configured(&rc_path)?;
     let env_exists = env_path.exists();
 
-    if rc_configured && env_exists {
-        println!("cudup is already configured:");
-        println!("  - {}", env_path.display());
-        println!("  - {} (contains source line)", rc_path.display());
-        println!();
+    match (rc_configured, env_exists) {
+        (true, true) => {
+            println!("cudup is already configured:");
+            println!("  - {}", env_path.display());
+            println!("  - {} (contains source line)", rc_path.display());
+            println!();
 
-        if !prompt_confirmation("Reconfigure anyway?")? {
-            println!("No changes made.");
-            return Ok(());
+            if !prompt_confirmation("Reconfigure anyway?")? {
+                println!("No changes made.");
+                return Ok(());
+            }
+            println!();
         }
-        println!();
-    } else if rc_configured {
-        println!(
-            "Note: {} references cudup but {} is missing.",
-            rc_path.display(),
-            env_path.display()
-        );
-        println!("This will recreate the env file.");
-        println!();
-    } else if env_exists {
-        println!(
-            "Note: {} exists but {} doesn't source it.",
-            env_path.display(),
-            rc_path.display()
-        );
-        println!("This will update both files.");
-        println!();
+        (true, false) => {
+            println!(
+                "Note: {} references cudup but {} is missing.",
+                rc_path.display(),
+                env_path.display()
+            );
+            println!("This will recreate the env file.");
+            println!();
+        }
+        (false, true) => {
+            println!(
+                "Note: {} exists but {} doesn't source it.",
+                env_path.display(),
+                rc_path.display()
+            );
+            println!("This will update both files.");
+            println!();
+        }
+        (false, false) => {}
     }
 
-    // Show what will be modified
     println!("This will:");
     if env_exists {
         println!("  - Overwrite: {}", env_path.display());
@@ -63,19 +66,13 @@ pub fn setup() -> Result<()> {
     }
     println!();
 
-    // Ask for confirmation
     if !prompt_confirmation("Proceed with setup?")? {
         println!("Setup cancelled.");
         return Ok(());
     }
 
-    // Create cudup home directory if needed
-    let cudup_home = cudup_home()?;
-    if !cudup_home.exists() {
-        fs::create_dir_all(&cudup_home)?;
-    }
+    fs::create_dir_all(cudup_home()?)?;
 
-    // Write env file
     fs::write(&env_path, shell.env_content())?;
     println!();
     println!("Created {}", env_path.display());

@@ -28,20 +28,17 @@ pub fn remove() -> Result<()> {
     }
     println!();
 
-    // Ask for confirmation
     if !prompt_confirmation("Proceed with removal?")? {
         println!("Removal cancelled.");
         return Ok(());
     }
 
-    // Remove env file
     if env_exists {
         fs::remove_file(&env_path)?;
         println!();
         println!("Deleted {}", env_path.display());
     }
 
-    // Remove cudup lines from rc file
     if rc_configured {
         let content = fs::read_to_string(&rc_path)?;
         let new_content = remove_cudup_lines(&content);
