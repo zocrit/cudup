@@ -77,7 +77,6 @@ pub fn setup() -> Result<()> {
     println!();
     println!("Created {}", env_path.display());
 
-    // Append source line to rc file only if not already there
     if !rc_configured {
         let mut rc_file = fs::OpenOptions::new()
             .create(true)

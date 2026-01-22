@@ -1,5 +1,6 @@
 use anyhow::Result;
 use std::fs;
+use std::io::ErrorKind;
 
 use super::{Shell, env_file_path, is_rc_configured, prompt_confirmation, remove_cudup_lines};
 
@@ -33,10 +34,16 @@ pub fn remove() -> Result<()> {
         return Ok(());
     }
 
-    if env_exists {
-        fs::remove_file(&env_path)?;
-        println!();
-        println!("Deleted {}", env_path.display());
+    match fs::remove_file(&env_path) {
+        Ok(()) => {
+            println!();
+            println!("Deleted {}", env_path.display());
+        }
+        Err(e) if e.kind() == ErrorKind::NotFound => {
+            println!();
+            println!("Note: {} was already removed", env_path.display());
+        }
+        Err(e) => return Err(e.into()),
     }
 
     if rc_configured {
