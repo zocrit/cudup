@@ -33,13 +33,11 @@ pub fn get_installed_versions() -> Result<Vec<String>> {
         return Ok(vec![]);
     }
 
-    let versions: Vec<String> = fs::read_dir(&versions_path)?
+    Ok(fs::read_dir(versions_path)?
         .filter_map(|e| e.ok())
         .filter(|e| e.path().is_dir())
         .filter_map(|e| e.file_name().into_string().ok())
-        .collect();
-
-    Ok(versions)
+        .collect())
 }
 
 #[cfg(test)]
