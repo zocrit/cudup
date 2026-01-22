@@ -2,18 +2,19 @@ use anyhow::Result;
 use std::fs;
 use std::io::ErrorKind;
 
-use super::{Shell, env_file_path, is_rc_configured, prompt_confirmation, remove_cudup_lines};
+use super::{ManageContext, prompt_confirmation, remove_cudup_lines};
 
 pub fn remove() -> Result<()> {
-    let shell = Shell::detect()?;
-    let env_path = env_file_path(&shell)?;
-    let rc_path = shell.rc_file()?;
+    let ctx = ManageContext::detect()?;
+    ctx.print_detected_shell();
 
-    println!("Detected shell: {}", shell.name());
-    println!();
-
-    let rc_configured = is_rc_configured(&rc_path)?;
-    let env_exists = env_path.exists();
+    let ManageContext {
+        env_path,
+        rc_path,
+        rc_configured,
+        env_exists,
+        ..
+    } = ctx;
 
     if !rc_configured && !env_exists {
         println!("cudup is not configured. Nothing to remove.");

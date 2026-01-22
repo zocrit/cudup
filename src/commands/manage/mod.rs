@@ -41,6 +41,7 @@ pub enum Shell {
 }
 
 impl Shell {
+    #[must_use]
     pub fn detect() -> Result<Self> {
         let shell_path = env::var("SHELL").context("Could not detect shell from $SHELL")?;
         let shell_name = Path::new(&shell_path)
@@ -59,6 +60,7 @@ impl Shell {
         }
     }
 
+    #[must_use]
     pub fn env_content(&self) -> &'static str {
         match self {
             Shell::Bash | Shell::Zsh => BASH_ZSH_ENV,
@@ -66,6 +68,7 @@ impl Shell {
         }
     }
 
+    #[must_use]
     pub fn rc_file(&self) -> Result<PathBuf> {
         let home = dirs::home_dir().context("Could not determine home directory")?;
         Ok(match self {
@@ -75,6 +78,7 @@ impl Shell {
         })
     }
 
+    #[must_use]
     pub fn source_line(&self) -> String {
         let env_file = self.env_file_name();
         match self {
@@ -83,6 +87,7 @@ impl Shell {
         }
     }
 
+    #[must_use]
     pub fn env_file_name(&self) -> &'static str {
         match self {
             Shell::Bash | Shell::Zsh => "env",
@@ -90,6 +95,7 @@ impl Shell {
         }
     }
 
+    #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
             Shell::Bash => "bash",
@@ -99,18 +105,57 @@ impl Shell {
     }
 }
 
-pub fn env_file_path(shell: &Shell) -> Result<PathBuf> {
+pub struct ManageContext {
+    pub shell: Shell,
+    pub env_path: PathBuf,
+    pub rc_path: PathBuf,
+    pub rc_configured: bool,
+    pub env_exists: bool,
+}
+
+impl ManageContext {
+    #[must_use]
+    pub fn detect() -> Result<Self> {
+        let shell = Shell::detect()?;
+        let env_path = env_file_path(shell)?;
+        let rc_path = shell.rc_file()?;
+        let rc_configured = is_rc_configured(&rc_path)?;
+        let env_exists = env_path.exists();
+
+        Ok(Self {
+            shell,
+            env_path,
+            rc_path,
+            rc_configured,
+            env_exists,
+        })
+    }
+
+    pub fn print_detected_shell(&self) {
+        println!("Detected shell: {}", self.shell.name());
+        println!();
+    }
+}
+
+#[must_use]
+pub fn env_file_path(shell: Shell) -> Result<PathBuf> {
     Ok(cudup_home()?.join(shell.env_file_name()))
 }
 
-pub fn is_rc_configured(rc_path: &PathBuf) -> Result<bool> {
+#[must_use]
+pub fn is_rc_configured(rc_path: &Path) -> Result<bool> {
     if !rc_path.exists() {
         return Ok(false);
     }
     let content = fs::read_to_string(rc_path)?;
-    Ok(content.contains(".cudup/env"))
+    Ok(content.lines().any(|line| {
+        let trimmed = line.trim();
+        (trimmed.starts_with(". ") || trimmed.starts_with("source "))
+            && trimmed.contains(".cudup/env")
+    }))
 }
 
+#[must_use]
 pub fn remove_cudup_lines(content: &str) -> String {
     let lines: Vec<&str> = content.lines().collect();
     let mut result = Vec::new();
@@ -128,7 +173,7 @@ pub fn remove_cudup_lines(content: &str) -> String {
                 i += 1;
             }
             // Skip any blank line that preceded the comment (remove trailing blank)
-            if !result.is_empty() && result.last().map(|s: &&str| s.is_empty()).unwrap_or(false) {
+            if result.last().map_or(false, |s| s.is_empty()) {
                 result.pop();
             }
             continue;

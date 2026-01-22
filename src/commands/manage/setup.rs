@@ -4,18 +4,19 @@ use std::io::Write;
 
 use crate::config::cudup_home;
 
-use super::{Shell, env_file_path, is_rc_configured, prompt_confirmation};
+use super::{ManageContext, prompt_confirmation};
 
 pub fn setup() -> Result<()> {
-    let shell = Shell::detect()?;
-    let env_path = env_file_path(&shell)?;
-    let rc_path = shell.rc_file()?;
+    let ctx = ManageContext::detect()?;
+    ctx.print_detected_shell();
 
-    println!("Detected shell: {}", shell.name());
-    println!();
-
-    let rc_configured = is_rc_configured(&rc_path)?;
-    let env_exists = env_path.exists();
+    let ManageContext {
+        shell,
+        env_path,
+        rc_path,
+        rc_configured,
+        env_exists,
+    } = ctx;
 
     match (rc_configured, env_exists) {
         (true, true) => {
