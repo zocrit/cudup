@@ -1,44 +1,59 @@
 use std::fmt;
 use std::str::FromStr;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 /// A validated CUDA version string (e.g., "12.4.1")
 ///
-/// This newtype ensures version strings follow the expected format
+/// This type ensures version strings follow the expected format
 /// of `major.minor.patch` where each component is a valid number.
+/// Components are parsed at construction time for O(1) access.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CudaVersion(String);
+pub struct CudaVersion {
+    raw: String,
+    major: u32,
+    minor: u32,
+    patch: u32,
+}
 
+#[allow(dead_code)]
 impl CudaVersion {
-    /// Creates a new CudaVersion after validating the format
+    /// Creates a new CudaVersion after validating and parsing the format
     pub fn new(version: impl Into<String>) -> Result<Self> {
-        let version = version.into();
-        Self::validate(&version)?;
-        Ok(Self(version))
+        let raw = version.into();
+        let (major, minor, patch) = Self::parse(&raw)?;
+        Ok(Self {
+            raw,
+            major,
+            minor,
+            patch,
+        })
     }
 
-    /// Validates that a version string matches the expected format
-    fn validate(version: &str) -> Result<()> {
+    /// Parses and validates a version string, returning the components
+    fn parse(version: &str) -> Result<(u32, u32, u32)> {
         let mut parts = version.split('.');
 
-        for component in ["major", "minor", "patch"] {
-            let Some(part) = parts.next() else {
-                bail!(
+        let parse_component = |name: &str, part: Option<&str>| -> Result<u32> {
+            let part = part.ok_or_else(|| {
+                anyhow::anyhow!(
                     "Invalid CUDA version '{}': expected format 'major.minor.patch' (e.g., '12.4.1')",
                     version
-                );
-            };
-
-            if part.parse::<u32>().is_err() {
-                bail!(
+                )
+            })?;
+            part.parse::<u32>().map_err(|_| {
+                anyhow::anyhow!(
                     "Invalid CUDA version '{}': {} component '{}' is not a valid number",
                     version,
-                    component,
+                    name,
                     part
-                );
-            }
-        }
+                )
+            })
+        };
+
+        let major = parse_component("major", parts.next())?;
+        let minor = parse_component("minor", parts.next())?;
+        let patch = parse_component("patch", parts.next())?;
 
         if parts.next().is_some() {
             bail!(
@@ -47,36 +62,44 @@ impl CudaVersion {
             );
         }
 
-        Ok(())
+        Ok((major, minor, patch))
     }
 
     /// Returns the major version number (e.g., 12 for "12.4.1")
+    ///
     #[must_use]
     pub fn major(&self) -> u32 {
-        self.0
-            .split('.')
-            .next()
-            .expect("validated version has major component")
-            .parse()
-            .expect("validated version has numeric major component")
+        self.major
+    }
+
+    /// Returns the minor version number (e.g., 4 for "12.4.1")
+    #[must_use]
+    pub fn minor(&self) -> u32 {
+        self.minor
+    }
+
+    /// Returns the patch version number (e.g., 1 for "12.4.1")
+    #[must_use]
+    pub fn patch(&self) -> u32 {
+        self.patch
     }
 
     /// Returns the version as a string slice
     #[must_use]
     pub fn as_str(&self) -> &str {
-        &self.0
+        &self.raw
     }
 
     /// Consumes the CudaVersion and returns the inner String
     #[must_use]
     pub fn into_inner(self) -> String {
-        self.0
+        self.raw
     }
 }
 
 impl fmt::Display for CudaVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(&self.raw)
     }
 }
 
@@ -90,7 +113,7 @@ impl FromStr for CudaVersion {
 
 impl AsRef<str> for CudaVersion {
     fn as_ref(&self) -> &str {
-        &self.0
+        &self.raw
     }
 }
 
@@ -119,12 +142,16 @@ mod tests {
     }
 
     #[test]
-    fn test_major_version() {
+    fn test_version_components() {
         let v = CudaVersion::new("12.4.1").unwrap();
         assert_eq!(v.major(), 12);
+        assert_eq!(v.minor(), 4);
+        assert_eq!(v.patch(), 1);
 
         let v = CudaVersion::new("11.8.0").unwrap();
         assert_eq!(v.major(), 11);
+        assert_eq!(v.minor(), 8);
+        assert_eq!(v.patch(), 0);
     }
 
     #[test]
