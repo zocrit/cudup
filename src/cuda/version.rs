@@ -20,22 +20,17 @@ impl CudaVersion {
 
     /// Validates that a version string matches the expected format
     fn validate(version: &str) -> Result<()> {
-        let parts: Vec<&str> = version.split('.').collect();
+        let mut parts = version.split('.');
 
-        if parts.len() != 3 {
-            bail!(
-                "Invalid CUDA version '{}': expected format 'major.minor.patch' (e.g., '12.4.1')",
-                version
-            );
-        }
+        for component in ["major", "minor", "patch"] {
+            let Some(part) = parts.next() else {
+                bail!(
+                    "Invalid CUDA version '{}': expected format 'major.minor.patch' (e.g., '12.4.1')",
+                    version
+                );
+            };
 
-        for (i, part) in parts.iter().enumerate() {
             if part.parse::<u32>().is_err() {
-                let component = match i {
-                    0 => "major",
-                    1 => "minor",
-                    _ => "patch",
-                };
                 bail!(
                     "Invalid CUDA version '{}': {} component '{}' is not a valid number",
                     version,
@@ -43,6 +38,13 @@ impl CudaVersion {
                     part
                 );
             }
+        }
+
+        if parts.next().is_some() {
+            bail!(
+                "Invalid CUDA version '{}': expected format 'major.minor.patch' (e.g., '12.4.1')",
+                version
+            );
         }
 
         Ok(())
@@ -54,8 +56,9 @@ impl CudaVersion {
         self.0
             .split('.')
             .next()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(0)
+            .expect("validated version has major component")
+            .parse()
+            .expect("validated version has numeric major component")
     }
 
     /// Returns the version as a string slice
@@ -73,7 +76,7 @@ impl CudaVersion {
 
 impl fmt::Display for CudaVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        f.write_str(&self.0)
     }
 }
 
