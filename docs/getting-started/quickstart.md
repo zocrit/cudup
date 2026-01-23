@@ -11,7 +11,7 @@ cudup manage setup
 Restart your terminal or source your shell config:
 
 ```bash
-source ~/.bashrc  # or ~/.zshrc
+source ~/.bashrc  # or ~/.zshrc or ~/.config/fish/config.fish
 ```
 
 ## 2. List Available Versions
@@ -25,10 +25,10 @@ This shows all CUDA versions available for installation, with installed versions
 ## 3. Install a CUDA Version
 
 ```bash
-cudup install 12.4
+cudup install 12.4.1
 ```
 
-This downloads and installs CUDA 12.4 along with a compatible cuDNN version.
+This downloads and installs CUDA 12.4.1 along with a compatible cuDNN version.
 
 !!! info "Installation Location"
     CUDA versions are installed to `~/.cudup/versions/<version>/`
@@ -36,7 +36,7 @@ This downloads and installs CUDA 12.4 along with a compatible cuDNN version.
 ## 4. Activate the Version
 
 ```bash
-cudup use 12.4
+cudup use 12.4.1
 ```
 
 This sets `CUDA_HOME`, `PATH`, and `LD_LIBRARY_PATH` for your current shell.
@@ -54,8 +54,8 @@ cudup check
 
 [✓] cudup directory: /home/you/.cudup
 [✓] shell integration: env file exists
-[✓] installed versions: 1 (12.4)
-[✓] active version: 12.4
+[✓] installed versions: 1 (12.4.1)
+[✓] active version: 12.4.1
 [✓] nvcc: 12.4
 [✓] nvidia driver: v550.54
 [✓] gpu: NVIDIA GeForce RTX 4090

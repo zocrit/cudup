@@ -12,12 +12,16 @@ cudup use <VERSION>
 
 | Argument | Description |
 |----------|-------------|
-| `VERSION` | CUDA version to activate (e.g., `12.4.1`) |
+| `VERSION` | CUDA version to activate (format: `X.Y.Z`, e.g., `12.4.1`) |
 
 ## Examples
 
 ```bash
+# Activate CUDA 12.4.1
 cudup use 12.4.1
+
+# Activate a different version
+cudup use 11.8.0
 ```
 
 ## What It Does

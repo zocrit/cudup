@@ -8,8 +8,11 @@
 
 ## Install cudup
 
-!!! note "Coming Soon"
-    Installation instructions will be available once cudup reaches a stable release.
+### Using Cargo (Recommended)
+
+```bash
+cargo install cudup
+```
 
 ### From Source
 
@@ -36,13 +39,29 @@ cudup manage setup
 This will:
 
 1. Create `~/.cudup/env` with the shell function
-2. Add a source line to your `.bashrc` or `.zshrc`
+2. Add a source line to your shell config (`.bashrc`, `.zshrc`, or `config.fish`)
 
-Then restart your terminal or run:
+Supported shells: **bash**, **zsh**, **fish**
 
-```bash
-source ~/.bashrc  # or ~/.zshrc
-```
+Then restart your terminal or source your config:
+
+=== "Bash"
+
+    ```bash
+    source ~/.bashrc
+    ```
+
+=== "Zsh"
+
+    ```bash
+    source ~/.zshrc
+    ```
+
+=== "Fish"
+
+    ```bash
+    source ~/.config/fish/config.fish
+    ```
 
 ## Verify Installation
 

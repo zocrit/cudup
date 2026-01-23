@@ -7,10 +7,10 @@ Track development progress as features are implemented.
 - [x] Install CUDA + cuDNN together (`cudup install`)
 - [x] List available/installed versions (`cudup list`)
 - [x] Switch between versions (`cudup use`)
-- [x] Shell integration (`cudup manage setup`)
+- [x] Shell integration (`cudup manage setup`) - bash, zsh, fish
 - [x] Health diagnostics (`cudup check`)
 - [x] Basic error handling and user-friendly messages
-- [ ] Linux support (Ubuntu/Debian) - testing in progress
+- [x] Linux support (Ubuntu/Debian)
 
 ## v0.5 - Enhanced Experience
 
@@ -21,7 +21,7 @@ Track development progress as features are implemented.
 - [x] Enhanced diagnostics (runtime checks, GPU detection)
 - [x] Progress bars and colored output
 - [x] Show cudup version (`cudup --version`)
-- [ ] Checksum verification (SHA256 integrity checks)
+- [x] Checksum verification (SHA256 integrity checks)
 - [ ] Resumable downloads for large installers
 - [ ] Pre-flight compatibility checking (GPU driver, compute capability)
 

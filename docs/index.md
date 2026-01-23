@@ -21,11 +21,11 @@ No more manual downloads, path conflicts, or environment variable headaches.
 # One-time setup (configures shell integration)
 cudup manage setup
 
-# Install CUDA 12.4 with compatible cuDNN
-cudup install 12.4
+# Install CUDA 12.4.1 with compatible cuDNN
+cudup install 12.4.1
 
-# Switch to CUDA 12.4
-cudup use 12.4
+# Switch to CUDA 12.4.1
+cudup use 12.4.1
 
 # Verify everything works
 cudup check

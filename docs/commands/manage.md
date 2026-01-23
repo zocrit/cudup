@@ -29,8 +29,9 @@ cudup manage setup
 
 ### What It Does
 
-1. Creates `~/.cudup/env` with the shell wrapper function
-2. Adds `source ~/.cudup/env` to your `.bashrc` or `.zshrc`
+1. Detects your shell (bash, zsh, or fish)
+2. Creates `~/.cudup/env` (or `env.fish` for fish) with the shell wrapper function
+3. Adds a source line to your shell config (`.bashrc`, `.zshrc`, or `config.fish`)
 
 ### Example
 
@@ -68,8 +69,8 @@ cudup manage remove
 
 ### What It Does
 
-1. Deletes `~/.cudup/env`
-2. Removes the cudup source line from your `.bashrc` or `.zshrc`
+1. Deletes `~/.cudup/env` (or `env.fish`)
+2. Removes the cudup source line from your shell config
 
 ### Example
 
