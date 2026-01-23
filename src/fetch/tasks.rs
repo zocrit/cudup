@@ -52,7 +52,8 @@ pub fn collect_cuda_download_tasks(
         let download_info = match platform_info {
             PlatformInfo::Simple(info) => info,
             PlatformInfo::Variants(variants) => {
-                let cuda_major = cuda_major_version(cuda_version).unwrap_or("12");
+                let cuda_major = cuda_major_version(cuda_version)
+                    .expect("CUDA version should have been validated at CLI entry");
                 let variant_key = format!("cuda{}", cuda_major);
                 match variants.get(&variant_key) {
                     Some(info) => info,
