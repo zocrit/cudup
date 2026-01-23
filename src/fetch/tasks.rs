@@ -6,6 +6,19 @@ use crate::cuda::metadata::{CudaReleaseMetadata, PlatformInfo};
 use super::download::DownloadTask;
 use super::utils::TARGET_PLATFORM;
 
+/// Parses size string, logging a warning and returning 0 on failure
+fn parse_size(size_str: &str, package_name: &str) -> u64 {
+    size_str.parse().unwrap_or_else(|e| {
+        log::warn!(
+            "Failed to parse size '{}' for {}: {}",
+            size_str,
+            package_name,
+            e
+        );
+        0
+    })
+}
+
 /// Finds the best compatible cuDNN version for a given CUDA version
 ///
 /// Returns (cudnn_version, cuda_variant) tuple
@@ -15,7 +28,6 @@ pub async fn find_compatible_cudnn(cuda_version: &str) -> Result<Option<(String,
         .next()
         .context("Invalid CUDA version format")?;
 
-    // Use optimized early-exit search for newest compatible version
     if let Some(cudnn_version) = find_newest_compatible_cudnn(cuda_version).await? {
         let cuda_variant = format!("cuda{}", cuda_major);
         return Ok(Some((cudnn_version, cuda_variant)));
@@ -27,43 +39,32 @@ pub async fn find_compatible_cudnn(cuda_version: &str) -> Result<Option<(String,
 pub fn collect_cuda_download_tasks(
     metadata: &CudaReleaseMetadata,
     cuda_version: &str,
-) -> Result<Vec<DownloadTask>> {
-    let mut tasks = Vec::new();
+) -> Vec<DownloadTask> {
+    let mut tasks = Vec::with_capacity(metadata.packages.len());
 
     for (package_name, package_info) in &metadata.packages {
         if package_name.starts_with("release_") {
             continue;
         }
 
-        // Get platform-specific download info
         let Some(platform_info) = package_info.get_platform(TARGET_PLATFORM) else {
-            continue; // Package not available for this platform
+            continue;
         };
 
         let download_info = match platform_info {
             PlatformInfo::Simple(info) => info,
             PlatformInfo::Variants(variants) => {
-                // For packages with variants, try to find one matching our CUDA version
                 let cuda_major = cuda_version.split('.').next().unwrap_or("12");
                 let variant_key = format!("cuda{}", cuda_major);
                 match variants.get(&variant_key) {
                     Some(info) => info,
-                    None => continue, // No compatible variant
+                    None => continue,
                 }
             }
         };
 
         let url = format!("{}/{}", CUDA_BASE_URL, download_info.relative_path);
-
-        let size = download_info.size.parse().unwrap_or_else(|e| {
-            log::warn!(
-                "Failed to parse size '{}' for {}: {}",
-                download_info.size,
-                package_name,
-                e
-            );
-            0
-        });
+        let size = parse_size(&download_info.size, package_name);
 
         tasks.push(DownloadTask {
             package_name: package_name.clone(),
@@ -75,51 +76,34 @@ pub fn collect_cuda_download_tasks(
         });
     }
 
-    // Sort by size descending (largest first) for better parallelization potential
-    tasks.sort_by(|a, b| b.size.cmp(&a.size));
+    tasks.sort_unstable_by(|a, b| b.size.cmp(&a.size));
 
-    Ok(tasks)
+    tasks
 }
 
 pub fn collect_cudnn_download_task(
     metadata: &CudaReleaseMetadata,
     cuda_variant: &str,
-) -> Result<Option<DownloadTask>> {
-    let Some(cudnn_pkg) = metadata.get_package("cudnn") else {
-        return Ok(None);
-    };
-
-    let Some(platform_info) = cudnn_pkg.get_platform(TARGET_PLATFORM) else {
-        return Ok(None);
-    };
+) -> Option<DownloadTask> {
+    let cudnn_pkg = metadata.get_package("cudnn")?;
+    let platform_info = cudnn_pkg.get_platform(TARGET_PLATFORM)?;
 
     let download_info = match platform_info {
         PlatformInfo::Simple(info) => info,
-        PlatformInfo::Variants(variants) => match variants.get(cuda_variant) {
-            Some(info) => info,
-            None => return Ok(None),
-        },
+        PlatformInfo::Variants(variants) => variants.get(cuda_variant)?,
     };
 
     let url = format!("{}/{}", CUDNN_BASE_URL, download_info.relative_path);
+    let size = parse_size(&download_info.size, "cudnn");
 
-    let size = download_info.size.parse().unwrap_or_else(|e| {
-        log::warn!(
-            "Failed to parse size '{}' for cudnn: {}",
-            download_info.size,
-            e
-        );
-        0
-    });
-
-    Ok(Some(DownloadTask {
+    Some(DownloadTask {
         package_name: "cudnn".to_string(),
         version: cudnn_pkg.version.clone(),
         url,
         sha256: download_info.sha256.clone(),
         size,
         relative_path: download_info.relative_path.clone(),
-    }))
+    })
 }
 
 #[cfg(test)]
@@ -204,14 +188,15 @@ mod tests {
     #[test]
     fn test_collect_cuda_download_tasks() {
         let metadata = sample_cuda_metadata();
-        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1").unwrap();
+        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1");
 
         // Should have 2 packages (cuda_cccl and cuda_cudart), release_label is skipped
         assert_eq!(tasks.len(), 2);
 
-        let cccl_task = tasks.iter().find(|t| t.package_name == "cuda_cccl");
-        assert!(cccl_task.is_some());
-        let cccl = cccl_task.unwrap();
+        let cccl = tasks
+            .iter()
+            .find(|t| t.package_name == "cuda_cccl")
+            .expect("cuda_cccl task should exist");
         assert_eq!(cccl.size, 1234567);
         assert!(cccl.url.contains("cuda_cccl-linux-x86_64"));
         assert!(!cccl.sha256.is_empty());
@@ -220,19 +205,16 @@ mod tests {
     #[test]
     fn test_collect_cuda_download_tasks_skips_release_packages() {
         let metadata = sample_cuda_metadata();
-        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1").unwrap();
+        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1");
 
         // release_label package should be skipped
-        let release_task = tasks
-            .iter()
-            .find(|t| t.package_name.starts_with("release_"));
-        assert!(release_task.is_none());
+        assert!(!tasks.iter().any(|t| t.package_name.starts_with("release_")));
     }
 
     #[test]
     fn test_collect_cuda_download_tasks_sorted_by_size_descending() {
         let metadata = sample_cuda_metadata();
-        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1").unwrap();
+        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1");
 
         // Tasks should be sorted largest first
         // cuda_cudart (3456789) > cuda_cccl (1234567)
@@ -249,10 +231,9 @@ mod tests {
     #[test]
     fn test_collect_cudnn_download_task_cuda12() {
         let metadata = sample_cudnn_metadata();
-        let task = collect_cudnn_download_task(&metadata, "cuda12").unwrap();
+        let task =
+            collect_cudnn_download_task(&metadata, "cuda12").expect("should find cuda12 task");
 
-        assert!(task.is_some());
-        let task = task.unwrap();
         assert_eq!(task.package_name, "cudnn");
         assert_eq!(task.size, 987654322);
         assert!(task.url.contains("cuda12-archive"));
@@ -262,17 +243,16 @@ mod tests {
     #[test]
     fn test_collect_cudnn_download_task_cuda11() {
         let metadata = sample_cudnn_metadata();
-        let task = collect_cudnn_download_task(&metadata, "cuda11").unwrap();
+        let task =
+            collect_cudnn_download_task(&metadata, "cuda11").expect("should find cuda11 task");
 
-        assert!(task.is_some());
-        let task = task.unwrap();
         assert!(task.url.contains("cuda11-archive"));
     }
 
     #[test]
     fn test_collect_cudnn_download_task_invalid_variant() {
         let metadata = sample_cudnn_metadata();
-        let task = collect_cudnn_download_task(&metadata, "cuda10").unwrap();
+        let task = collect_cudnn_download_task(&metadata, "cuda10");
 
         // CUDA 10 is not supported
         assert!(task.is_none());
@@ -281,7 +261,7 @@ mod tests {
     #[test]
     fn test_collect_cudnn_download_task_no_cudnn_package() {
         let metadata = sample_cuda_metadata(); // CUDA metadata, no cuDNN
-        let task = collect_cudnn_download_task(&metadata, "cuda12").unwrap();
+        let task = collect_cudnn_download_task(&metadata, "cuda12");
 
         assert!(task.is_none());
     }

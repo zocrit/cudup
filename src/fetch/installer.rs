@@ -110,7 +110,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
     // Fetch CUDA metadata
     let meta_spinner = create_spinner(&mp, format!("Fetching CUDA {} metadata...", version));
     let cuda_metadata = fetch_cuda_version_metadata(version).await?;
-    let cuda_tasks = collect_cuda_download_tasks(&cuda_metadata, version)?;
+    let cuda_tasks = collect_cuda_download_tasks(&cuda_metadata, version);
     let cuda_total_size: u64 = cuda_tasks.iter().map(|t| t.size).sum();
     meta_spinner.finish_and_clear();
     info!(
@@ -127,7 +127,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
             info!("Found cuDNN {} ({})", cudnn_version, cuda_variant);
 
             let cudnn_metadata = fetch_cudnn_version_metadata(&cudnn_version).await?;
-            collect_cudnn_download_task(&cudnn_metadata, &cuda_variant)?
+            collect_cudnn_download_task(&cudnn_metadata, &cuda_variant)
         } else {
             cudnn_spinner.finish_and_clear();
             warn!("No compatible cuDNN found for CUDA {}", version);
