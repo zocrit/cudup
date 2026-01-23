@@ -27,16 +27,33 @@ use super::utils::{format_size, target_platform, version_install_dir};
 use super::verify::verify_checksum;
 use crate::config;
 
-fn create_progress_bar(mp: &MultiProgress, size: u64, prefix: String) -> ProgressBar {
-    let pb = mp.add(ProgressBar::new(size));
-    pb.set_style(
-        ProgressStyle::default_bar()
-            .template("{prefix:>12.green.bold} [{bar:30.green/dim}] {bytes:>10}/{total_bytes:<10} {bytes_per_sec:>12} ({eta})")
-            .expect("invalid progress bar template")
-            .progress_chars("━━╸"),
-    );
-    pb.set_prefix(prefix);
-    pb
+/// Creates a progress bar for downloads. Uses a determinate bar if size is known,
+/// or an indeterminate spinner showing bytes downloaded if size is unknown.
+fn create_progress_bar(mp: &MultiProgress, size: Option<u64>, prefix: String) -> ProgressBar {
+    match size {
+        Some(s) => {
+            let pb = mp.add(ProgressBar::new(s));
+            pb.set_style(
+                ProgressStyle::default_bar()
+                    .template("{prefix:>12.green.bold} [{bar:30.green/dim}] {bytes:>10}/{total_bytes:<10} {bytes_per_sec:>12} ({eta})")
+                    .expect("invalid progress bar template")
+                    .progress_chars("━━╸"),
+            );
+            pb.set_prefix(prefix);
+            pb
+        }
+        None => {
+            let pb = mp.add(ProgressBar::new_spinner());
+            pb.set_style(
+                ProgressStyle::default_spinner()
+                    .template("{prefix:>12.green.bold} {spinner} {bytes:>10} {bytes_per_sec:>12}")
+                    .expect("invalid spinner template"),
+            );
+            pb.set_prefix(prefix);
+            pb.enable_steady_tick(std::time::Duration::from_millis(100));
+            pb
+        }
+    }
 }
 
 fn create_spinner(mp: &MultiProgress, message: String) -> ProgressBar {
@@ -60,10 +77,9 @@ async fn process_download_task(
 ) -> Result<()> {
     let archive_path = downloads_dir.join(task.archive_name());
 
-    // Download with progress bar
     let pb = create_progress_bar(mp, task.size, task.package_name.clone());
     download_file(client, &task.url, &archive_path, Some(&pb)).await?;
-    pb.finish_with_message("downloaded");
+    pb.finish_and_clear();
 
     // Verify checksum
     let verify_spinner = create_spinner(mp, format!("Verifying {}...", task.package_name));
@@ -131,12 +147,22 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
         );
     }
 
-    let cuda_total_size: u64 = cuda_tasks.iter().map(|t| t.size).sum();
-    info!(
-        "Found {} CUDA packages ({})",
-        cuda_tasks.len(),
-        format_size(cuda_total_size)
-    );
+    let cuda_known_size: u64 = cuda_tasks.iter().filter_map(|t| t.size).sum();
+    let cuda_unknown_count = cuda_tasks.iter().filter(|t| t.size.is_none()).count();
+    if cuda_unknown_count > 0 {
+        info!(
+            "Found {} CUDA packages ({}+, {} with unknown size)",
+            cuda_tasks.len(),
+            format_size(cuda_known_size),
+            cuda_unknown_count
+        );
+    } else {
+        info!(
+            "Found {} CUDA packages ({})",
+            cuda_tasks.len(),
+            format_size(cuda_known_size)
+        );
+    }
 
     // Find compatible cuDNN
     let cudnn_spinner = create_spinner(&mp, "Finding compatible cuDNN version...".to_string());
@@ -155,15 +181,26 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
         }
     };
 
-    let cudnn_size = cudnn_task.as_ref().map_or(0, |t| t.size);
-    let total_size = cuda_total_size + cudnn_size;
+    let cudnn_known_size: u64 = cudnn_task.as_ref().and_then(|t| t.size).unwrap_or(0);
+    let cudnn_unknown = cudnn_task.as_ref().is_some_and(|t| t.size.is_none());
+    let total_known_size = cuda_known_size + cudnn_known_size;
+    let total_unknown_count = cuda_unknown_count + usize::from(cudnn_unknown);
     let total_packages = cuda_tasks.len() + usize::from(cudnn_task.is_some());
 
-    info!(
-        "Downloading {} packages ({})",
-        total_packages,
-        format_size(total_size)
-    );
+    if total_unknown_count > 0 {
+        info!(
+            "Downloading {} packages ({}+, {} with unknown size)",
+            total_packages,
+            format_size(total_known_size),
+            total_unknown_count
+        );
+    } else {
+        info!(
+            "Downloading {} packages ({})",
+            total_packages,
+            format_size(total_known_size)
+        );
+    }
 
     // Create directories
     let downloads = config::downloads_dir()?;

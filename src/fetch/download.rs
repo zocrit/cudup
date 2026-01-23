@@ -13,7 +13,7 @@ pub struct DownloadTask {
     pub version: String,
     pub url: String,
     pub sha256: String,
-    pub size: u64,
+    pub size: Option<u64>,
     pub relative_path: String,
 }
 
@@ -77,12 +77,12 @@ mod tests {
             version: "1.0.0".to_string(),
             url: "https://example.com/test.tar.xz".to_string(),
             sha256: "abc123".to_string(),
-            size: 12345,
+            size: Some(12345),
             relative_path: "test/path/test.tar.xz".to_string(),
         };
 
         assert_eq!(task.package_name, "test_pkg");
-        assert_eq!(task.size, 12345);
+        assert_eq!(task.size, Some(12345));
     }
 
     #[test]
@@ -92,7 +92,7 @@ mod tests {
             version: "12.4.127".to_string(),
             url: "https://example.com/archive.tar.xz".to_string(),
             sha256: "abc123".to_string(),
-            size: 1000,
+            size: Some(1000),
             relative_path: "cuda_cccl/linux-x86_64/cuda_cccl-linux-x86_64-12.4.127-archive.tar.xz"
                 .to_string(),
         };
@@ -110,7 +110,7 @@ mod tests {
             version: "1.0.0".to_string(),
             url: "https://example.com/test.tar.xz".to_string(),
             sha256: "abc123".to_string(),
-            size: 1000,
+            size: Some(1000),
             relative_path: "simple.tar.xz".to_string(),
         };
 
@@ -124,7 +124,7 @@ mod tests {
             version: "1.0.0".to_string(),
             url: "https://example.com/test.tar.xz".to_string(),
             sha256: "abc123".to_string(),
-            size: 1000,
+            size: Some(1000),
             relative_path: "".to_string(),
         };
 

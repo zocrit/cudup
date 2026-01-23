@@ -5,16 +5,11 @@ use crate::cuda::metadata::{CudaReleaseMetadata, PlatformInfo};
 
 use super::download::DownloadTask;
 
-/// Parses size string, logging a warning and returning 0 on failure
-fn parse_size(size_str: &str, package_name: &str) -> u64 {
-    size_str.parse().unwrap_or_else(|e| {
-        log::warn!(
-            "Failed to parse size '{}' for {}: {}",
-            size_str,
-            package_name,
-            e
-        );
-        0
+/// Parses size string, returning None if parsing fails
+fn parse_size(size_str: &str, package_name: &str) -> Option<u64> {
+    size_str.parse().ok().or_else(|| {
+        log::warn!("Failed to parse size '{}' for {}", size_str, package_name);
+        None
     })
 }
 
@@ -79,7 +74,13 @@ pub fn collect_cuda_download_tasks(
         });
     }
 
-    tasks.sort_unstable_by(|a, b| b.size.cmp(&a.size));
+    // Sort by size descending, with unknown sizes (None) at the end
+    tasks.sort_unstable_by(|a, b| match (b.size, a.size) {
+        (Some(b_size), Some(a_size)) => b_size.cmp(&a_size),
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => std::cmp::Ordering::Equal,
+    });
 
     tasks
 }
@@ -229,7 +230,7 @@ mod tests {
             .iter()
             .find(|t| t.package_name == "cuda_cccl")
             .expect("cuda_cccl task should exist");
-        assert_eq!(cccl.size, 1234567);
+        assert_eq!(cccl.size, Some(1234567));
         assert!(cccl.url.contains("cuda_cccl-linux-x86_64"));
         assert!(!cccl.sha256.is_empty());
     }
@@ -254,9 +255,14 @@ mod tests {
         assert_eq!(tasks[0].package_name, "cuda_cudart");
         assert_eq!(tasks[1].package_name, "cuda_cccl");
 
-        // Verify sizes are in descending order
+        // Verify sizes are in descending order (known sizes)
         for i in 1..tasks.len() {
-            assert!(tasks[i - 1].size >= tasks[i].size);
+            match (tasks[i - 1].size, tasks[i].size) {
+                (Some(a), Some(b)) => assert!(a >= b),
+                (Some(_), None) => {} // Known before unknown is correct
+                (None, Some(_)) => panic!("Unknown size should not come before known size"),
+                (None, None) => {}
+            }
         }
     }
 
@@ -267,7 +273,7 @@ mod tests {
             .expect("should find cuda12 task");
 
         assert_eq!(task.package_name, "cudnn");
-        assert_eq!(task.size, 987654322);
+        assert_eq!(task.size, Some(987654322));
         assert!(task.url.contains("cuda12-archive"));
         assert!(task.relative_path.contains("cuda12"));
     }
@@ -321,7 +327,7 @@ mod tests {
             .expect("cuda_cccl task should exist");
         assert!(cccl.url.contains("linux-sbsa"));
         assert!(cccl.relative_path.contains("linux-sbsa"));
-        assert_eq!(cccl.size, 1234568);
+        assert_eq!(cccl.size, Some(1234568));
     }
 
     #[test]
@@ -331,7 +337,7 @@ mod tests {
             .expect("should find cuda12 task for ARM64");
 
         assert_eq!(task.package_name, "cudnn");
-        assert_eq!(task.size, 987654324);
+        assert_eq!(task.size, Some(987654324));
         assert!(task.url.contains("linux-sbsa"));
         assert!(task.url.contains("cuda12-archive"));
     }
