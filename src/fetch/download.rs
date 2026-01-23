@@ -1,4 +1,5 @@
 use anyhow::{Context, Result, bail};
+use futures::StreamExt;
 use indicatif::ProgressBar;
 use reqwest::Client;
 use std::path::Path;
@@ -8,6 +9,7 @@ use tokio::io::AsyncWriteExt;
 #[derive(Debug, Clone)]
 pub struct DownloadTask {
     pub package_name: String,
+    #[allow(dead_code)]
     pub version: String,
     pub url: String,
     pub sha256: String,
@@ -17,10 +19,12 @@ pub struct DownloadTask {
 
 impl DownloadTask {
     /// Returns the archive filename from the relative path
+    #[must_use]
     pub fn archive_name(&self) -> &str {
         self.relative_path
             .split('/')
             .next_back()
+            .filter(|s| !s.is_empty())
             .unwrap_or("archive.tar.xz")
     }
 }
@@ -31,8 +35,6 @@ pub async fn download_file(
     dest: &Path,
     progress: Option<&ProgressBar>,
 ) -> Result<()> {
-    use futures::StreamExt;
-
     let response = client
         .get(url)
         .send()
@@ -76,10 +78,56 @@ mod tests {
             url: "https://example.com/test.tar.xz".to_string(),
             sha256: "abc123".to_string(),
             size: 12345,
-            relative_path: "test/test.tar.xz".to_string(),
+            relative_path: "test/path/test.tar.xz".to_string(),
         };
 
         assert_eq!(task.package_name, "test_pkg");
         assert_eq!(task.size, 12345);
+    }
+
+    #[test]
+    fn test_archive_name_extracts_filename() {
+        let task = DownloadTask {
+            package_name: "cuda_cccl".to_string(),
+            version: "12.4.127".to_string(),
+            url: "https://example.com/archive.tar.xz".to_string(),
+            sha256: "abc123".to_string(),
+            size: 1000,
+            relative_path: "cuda_cccl/linux-x86_64/cuda_cccl-linux-x86_64-12.4.127-archive.tar.xz"
+                .to_string(),
+        };
+
+        assert_eq!(
+            task.archive_name(),
+            "cuda_cccl-linux-x86_64-12.4.127-archive.tar.xz"
+        );
+    }
+
+    #[test]
+    fn test_archive_name_simple_path() {
+        let task = DownloadTask {
+            package_name: "test".to_string(),
+            version: "1.0.0".to_string(),
+            url: "https://example.com/test.tar.xz".to_string(),
+            sha256: "abc123".to_string(),
+            size: 1000,
+            relative_path: "simple.tar.xz".to_string(),
+        };
+
+        assert_eq!(task.archive_name(), "simple.tar.xz");
+    }
+
+    #[test]
+    fn test_archive_name_empty_path() {
+        let task = DownloadTask {
+            package_name: "test".to_string(),
+            version: "1.0.0".to_string(),
+            url: "https://example.com/test.tar.xz".to_string(),
+            sha256: "abc123".to_string(),
+            size: 1000,
+            relative_path: "".to_string(),
+        };
+
+        assert_eq!(task.archive_name(), "archive.tar.xz");
     }
 }

@@ -4,6 +4,7 @@
     "cudart",
     "indicatif",
     "noheader",
-    "nvcc"
+    "nvcc",
+    "serde"
   ]
 }
