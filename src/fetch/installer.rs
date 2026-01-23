@@ -14,7 +14,8 @@ use super::extract::extract_tarball;
 use super::tasks::{
     collect_cuda_download_tasks, collect_cudnn_download_task, find_compatible_cudnn,
 };
-use super::utils::{downloads_dir, format_size, version_install_dir};
+use super::utils::{format_size, version_install_dir};
+use crate::config;
 use super::verify::verify_checksum;
 
 /// Creates a progress bar with consistent styling
@@ -144,7 +145,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
     );
 
     // Create directories
-    let downloads = downloads_dir()?;
+    let downloads = config::downloads_dir()?;
     fs::create_dir_all(&downloads).await?;
     fs::create_dir_all(&install_dir).await?;
 

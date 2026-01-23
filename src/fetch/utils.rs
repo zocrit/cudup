@@ -5,17 +5,11 @@ use crate::config;
 
 pub const TARGET_PLATFORM: &str = "linux-x86_64";
 
-/// Returns the installation directory for a specific CUDA version
 pub fn version_install_dir(cuda_version: &str) -> Result<PathBuf> {
     Ok(config::versions_dir()?.join(cuda_version))
 }
 
-/// Returns the downloads directory for temporary archives
-pub fn downloads_dir() -> Result<PathBuf> {
-    config::downloads_dir()
-}
-
-/// Format bytes as human-readable size
+#[must_use]
 pub fn format_size(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -28,7 +22,7 @@ pub fn format_size(bytes: u64) -> String {
     } else if bytes >= KB {
         format!("{:.2} KB", bytes as f64 / KB as f64)
     } else {
-        format!("{} B", bytes)
+        format!("{bytes} B")
     }
 }
 
@@ -69,12 +63,5 @@ mod tests {
         assert!(dir.to_string_lossy().contains("12.4.1"));
         assert!(dir.to_string_lossy().contains(".cudup"));
         assert!(dir.to_string_lossy().contains("versions"));
-    }
-
-    #[test]
-    fn test_downloads_dir() {
-        let dir = downloads_dir().unwrap();
-        assert!(dir.to_string_lossy().contains(".cudup"));
-        assert!(dir.to_string_lossy().contains("downloads"));
     }
 }
