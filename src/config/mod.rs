@@ -4,6 +4,9 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 
 pub fn cudup_home() -> Result<PathBuf> {
+    if let Ok(custom_home) = std::env::var("CUDUP_HOME") {
+        return Ok(PathBuf::from(custom_home));
+    }
     let home = dirs::home_dir().context("Could not determine home directory")?;
     Ok(home.join(".cudup"))
 }
