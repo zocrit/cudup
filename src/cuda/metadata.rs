@@ -50,16 +50,18 @@ pub struct DownloadInfo {
     pub size: String,
 }
 
+#[allow(dead_code)]
 impl CudaReleaseMetadata {
     pub fn get_package(&self, name: &str) -> Option<&PackageInfo> {
         self.packages.get(name)
     }
 
     pub fn package_names(&self) -> impl Iterator<Item = &str> {
-        self.packages.keys().map(|s| s.as_str())
+        self.packages.keys().map(String::as_str)
     }
 }
 
+#[allow(dead_code)]
 impl PackageInfo {
     pub fn get_platform(&self, platform: &str) -> Option<&PlatformInfo> {
         self.platforms.get(platform)
@@ -69,31 +71,34 @@ impl PackageInfo {
         self.platforms
             .keys()
             .filter(|k| !k.starts_with("cuda_variant"))
-            .map(|s| s.as_str())
+            .map(String::as_str)
     }
 }
 
+#[allow(dead_code)]
 impl PlatformInfo {
     pub fn as_simple(&self) -> Option<&DownloadInfo> {
         match self {
             PlatformInfo::Simple(info) => Some(info),
-            _ => None,
+            PlatformInfo::Variants(_) => None,
         }
     }
 
     pub fn get_variant(&self, variant: &str) -> Option<&DownloadInfo> {
         match self {
             PlatformInfo::Variants(variants) => variants.get(variant),
-            _ => None,
+            PlatformInfo::Simple(_) => None,
         }
     }
 
     pub fn variants(&self) -> impl Iterator<Item = &str> {
-        let variants = match self {
+        match self {
             PlatformInfo::Variants(v) => Some(v),
-            _ => None,
-        };
-        variants.into_iter().flatten().map(|(k, _)| k.as_str())
+            PlatformInfo::Simple(_) => None,
+        }
+        .into_iter()
+        .flat_map(HashMap::keys)
+        .map(String::as_str)
     }
 }
 
