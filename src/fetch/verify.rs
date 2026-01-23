@@ -1,18 +1,18 @@
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
+use sha2::{Digest, Sha256};
 use std::path::Path;
 use tokio::fs;
+use tokio::io::AsyncReadExt;
 
-pub async fn verify_checksum(path: &Path, expected_sha256: &str) -> Result<bool> {
-    use sha2::{Digest, Sha256};
-    use tokio::io::AsyncReadExt;
-
-    // Normalize expected hash: trim whitespace and convert to lowercase
+pub async fn verify_checksum(path: &Path, expected_sha256: &str) -> Result<()> {
     let expected = expected_sha256.trim().to_lowercase();
 
-    // Stream the file to avoid loading it entirely into memory
-    let mut file = fs::File::open(path).await?;
+    let mut file = fs::File::open(path)
+        .await
+        .with_context(|| format!("Failed to open {} for verification", path.display()))?;
+
     let mut hasher = Sha256::new();
-    let mut buffer = vec![0u8; 8192]; // 8KB buffer
+    let mut buffer = vec![0u8; 64 * 1024];
 
     loop {
         let bytes_read = file.read(&mut buffer).await?;
@@ -22,20 +22,27 @@ pub async fn verify_checksum(path: &Path, expected_sha256: &str) -> Result<bool>
         hasher.update(&buffer[..bytes_read]);
     }
 
-    let result = hasher.finalize();
-    let actual = format!("{:x}", result);
+    let actual = format!("{:x}", hasher.finalize());
 
-    Ok(actual == expected)
+    if actual != expected {
+        bail!(
+            "Checksum mismatch for {}: expected {}, got {}",
+            path.display(),
+            expected,
+            actual
+        );
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::io::AsyncWriteExt;
 
     #[tokio::test]
     async fn test_verify_checksum_correct() {
-        use tokio::io::AsyncWriteExt;
-
         let temp_dir = tempfile::tempdir().unwrap();
         let file_path = temp_dir.path().join("test_file.txt");
 
@@ -48,14 +55,11 @@ mod tests {
         // SHA256 of "Hello, World!" is known
         let expected_sha256 = "dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f";
 
-        let result = verify_checksum(&file_path, expected_sha256).await.unwrap();
-        assert!(result);
+        verify_checksum(&file_path, expected_sha256).await.unwrap();
     }
 
     #[tokio::test]
     async fn test_verify_checksum_incorrect() {
-        use tokio::io::AsyncWriteExt;
-
         let temp_dir = tempfile::tempdir().unwrap();
         let file_path = temp_dir.path().join("test_file.txt");
 
@@ -66,7 +70,13 @@ mod tests {
 
         let wrong_sha256 = "0000000000000000000000000000000000000000000000000000000000000000";
 
-        let result = verify_checksum(&file_path, wrong_sha256).await.unwrap();
-        assert!(!result);
+        let result = verify_checksum(&file_path, wrong_sha256).await;
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Checksum mismatch")
+        );
     }
 }

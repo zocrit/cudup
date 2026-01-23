@@ -60,10 +60,10 @@ async fn process_download_task(
 
     // Verify checksum
     let verify_spinner = create_spinner(mp, format!("Verifying {}...", task.package_name));
-    if !verify_checksum(&archive_path, &task.sha256).await? {
+    if let Err(e) = verify_checksum(&archive_path, &task.sha256).await {
         verify_spinner.finish_with_message(format!("[FAIL] {} checksum mismatch", task.package_name));
         fs::remove_file(&archive_path).await.ok();
-        bail!("Checksum verification failed for {}", task.package_name);
+        return Err(e);
     }
     verify_spinner.finish_and_clear();
 
