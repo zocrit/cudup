@@ -1,32 +1,27 @@
-use anyhow::{Context, Result};
+use std::cmp::Reverse;
+
+use anyhow::Result;
 
 use crate::cuda::discover::{CUDA_BASE_URL, CUDNN_BASE_URL, find_newest_compatible_cudnn};
 use crate::cuda::metadata::{CudaReleaseMetadata, PlatformInfo};
+use crate::cuda::version::CudaVersion;
 
 use super::download::DownloadTask;
 
 /// Parses size string, returning None if parsing fails
 fn parse_size(size_str: &str, package_name: &str) -> Option<u64> {
-    size_str.parse().ok().or_else(|| {
-        log::warn!("Failed to parse size '{}' for {}", size_str, package_name);
-        None
-    })
-}
-
-/// Extracts the major version from a CUDA version string (e.g., "12.4.1" -> "12")
-fn cuda_major_version(cuda_version: &str) -> Option<&str> {
-    cuda_version.split('.').next().filter(|s| !s.is_empty())
+    size_str
+        .parse()
+        .inspect_err(|_| log::warn!("Failed to parse size '{}' for {}", size_str, package_name))
+        .ok()
 }
 
 /// Finds the best compatible cuDNN version for a given CUDA version
 ///
 /// Returns (cudnn_version, cuda_variant) tuple
-pub async fn find_compatible_cudnn(cuda_version: &str) -> Result<Option<(String, String)>> {
-    let cuda_major =
-        cuda_major_version(cuda_version).context("Invalid CUDA version format")?;
-
-    if let Some(cudnn_version) = find_newest_compatible_cudnn(cuda_version).await? {
-        let cuda_variant = format!("cuda{}", cuda_major);
+pub async fn find_compatible_cudnn(cuda_version: &CudaVersion) -> Result<Option<(String, String)>> {
+    if let Some(cudnn_version) = find_newest_compatible_cudnn(cuda_version.as_str()).await? {
+        let cuda_variant = format!("cuda{}", cuda_version.major());
         return Ok(Some((cudnn_version, cuda_variant)));
     }
 
@@ -35,10 +30,11 @@ pub async fn find_compatible_cudnn(cuda_version: &str) -> Result<Option<(String,
 
 pub fn collect_cuda_download_tasks(
     metadata: &CudaReleaseMetadata,
-    cuda_version: &str,
+    cuda_version: &CudaVersion,
     platform: &str,
 ) -> Vec<DownloadTask> {
     let mut tasks = Vec::with_capacity(metadata.packages.len());
+    let variant_key = format!("cuda{}", cuda_version.major());
 
     for (package_name, package_info) in &metadata.packages {
         if package_name.starts_with("release_") {
@@ -51,15 +47,10 @@ pub fn collect_cuda_download_tasks(
 
         let download_info = match platform_info {
             PlatformInfo::Simple(info) => info,
-            PlatformInfo::Variants(variants) => {
-                let cuda_major = cuda_major_version(cuda_version)
-                    .expect("CUDA version should have been validated at CLI entry");
-                let variant_key = format!("cuda{}", cuda_major);
-                match variants.get(&variant_key) {
-                    Some(info) => info,
-                    None => continue,
-                }
-            }
+            PlatformInfo::Variants(variants) => match variants.get(&variant_key) {
+                Some(info) => info,
+                None => continue,
+            },
         };
 
         let url = format!("{}/{}", CUDA_BASE_URL, download_info.relative_path);
@@ -76,12 +67,7 @@ pub fn collect_cuda_download_tasks(
     }
 
     // Sort by size descending, with unknown sizes (None) at the end
-    tasks.sort_unstable_by(|a, b| match (b.size, a.size) {
-        (Some(b_size), Some(a_size)) => b_size.cmp(&a_size),
-        (Some(_), None) => std::cmp::Ordering::Less,
-        (None, Some(_)) => std::cmp::Ordering::Greater,
-        (None, None) => std::cmp::Ordering::Equal,
-    });
+    tasks.sort_unstable_by_key(|t| Reverse(t.size));
 
     tasks
 }
@@ -116,6 +102,10 @@ pub fn collect_cudnn_download_task(
 mod tests {
     use super::*;
     use crate::cuda::metadata::CudaReleaseMetadata;
+
+    fn cuda_version(s: &str) -> CudaVersion {
+        CudaVersion::new(s).unwrap()
+    }
 
     fn sample_cuda_metadata() -> CudaReleaseMetadata {
         serde_json::from_str(
@@ -222,7 +212,8 @@ mod tests {
     #[test]
     fn test_collect_cuda_download_tasks() {
         let metadata = sample_cuda_metadata();
-        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1", TEST_PLATFORM);
+        let version = cuda_version("12.4.1");
+        let tasks = collect_cuda_download_tasks(&metadata, &version, TEST_PLATFORM);
 
         // Should have 2 packages (cuda_cccl and cuda_cudart), release_label is skipped
         assert_eq!(tasks.len(), 2);
@@ -239,7 +230,8 @@ mod tests {
     #[test]
     fn test_collect_cuda_download_tasks_skips_release_packages() {
         let metadata = sample_cuda_metadata();
-        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1", TEST_PLATFORM);
+        let version = cuda_version("12.4.1");
+        let tasks = collect_cuda_download_tasks(&metadata, &version, TEST_PLATFORM);
 
         // release_label package should be skipped
         assert!(!tasks.iter().any(|t| t.package_name.starts_with("release_")));
@@ -248,7 +240,8 @@ mod tests {
     #[test]
     fn test_collect_cuda_download_tasks_sorted_by_size_descending() {
         let metadata = sample_cuda_metadata();
-        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1", TEST_PLATFORM);
+        let version = cuda_version("12.4.1");
+        let tasks = collect_cuda_download_tasks(&metadata, &version, TEST_PLATFORM);
 
         // Tasks should be sorted largest first
         // cuda_cudart (3456789) > cuda_cccl (1234567)
@@ -308,7 +301,8 @@ mod tests {
     #[test]
     fn test_collect_cuda_download_tasks_unsupported_platform() {
         let metadata = sample_cuda_metadata();
-        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1", "linux-ppc64le");
+        let version = cuda_version("12.4.1");
+        let tasks = collect_cuda_download_tasks(&metadata, &version, "linux-ppc64le");
 
         // No packages for this platform in test data
         assert!(tasks.is_empty());
@@ -317,7 +311,8 @@ mod tests {
     #[test]
     fn test_collect_cuda_download_tasks_arm64() {
         let metadata = sample_cuda_metadata();
-        let tasks = collect_cuda_download_tasks(&metadata, "12.4.1", "linux-sbsa");
+        let version = cuda_version("12.4.1");
+        let tasks = collect_cuda_download_tasks(&metadata, &version, "linux-sbsa");
 
         // Should have 2 packages for ARM64
         assert_eq!(tasks.len(), 2);
@@ -341,23 +336,5 @@ mod tests {
         assert_eq!(task.size, Some(987654324));
         assert!(task.url.contains("linux-sbsa"));
         assert!(task.url.contains("cuda12-archive"));
-    }
-
-    #[test]
-    fn test_cuda_major_version() {
-        assert_eq!(cuda_major_version("12.4.1"), Some("12"));
-        assert_eq!(cuda_major_version("11.8.0"), Some("11"));
-        assert_eq!(cuda_major_version("10"), Some("10"));
-        assert_eq!(cuda_major_version(""), None);
-    }
-
-    #[test]
-    fn test_cuda_major_version_edge_cases() {
-        // Single component
-        assert_eq!(cuda_major_version("12"), Some("12"));
-        // Two components
-        assert_eq!(cuda_major_version("12.4"), Some("12"));
-        // Trailing dot
-        assert_eq!(cuda_major_version("12."), Some("12"));
     }
 }

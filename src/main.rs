@@ -78,7 +78,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Install { version } => commands::install(version.as_str()).await?,
+        Commands::Install { version } => commands::install(version).await?,
         Commands::Uninstall {
             version,
             force,

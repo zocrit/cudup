@@ -17,6 +17,7 @@ static DOWNLOAD_CLIENT: LazyLock<Client> = LazyLock::new(|| {
 use crate::cuda::discover::{
     fetch_available_cuda_versions, fetch_cuda_version_metadata, fetch_cudnn_version_metadata,
 };
+use crate::cuda::version::CudaVersion;
 
 use super::download::{DownloadTask, download_file};
 use super::extract::extract_tarball;
@@ -68,6 +69,39 @@ fn create_spinner(mp: &MultiProgress, message: String) -> ProgressBar {
     spinner
 }
 
+/// Statistics about download sizes for a set of tasks
+struct SizeStats {
+    known_size: u64,
+    unknown_count: usize,
+}
+
+impl SizeStats {
+    /// Calculate size stats from a slice of download tasks
+    fn from_tasks(tasks: &[DownloadTask]) -> Self {
+        Self {
+            known_size: tasks.iter().filter_map(|t| t.size).sum(),
+            unknown_count: tasks.iter().filter(|t| t.size.is_none()).count(),
+        }
+    }
+
+    /// Combine stats from multiple sources
+    fn combine(&self, other: &Self) -> Self {
+        Self {
+            known_size: self.known_size + other.known_size,
+            unknown_count: self.unknown_count + other.unknown_count,
+        }
+    }
+
+    /// Format as a human-readable size string (e.g., "5.2 GB" or "5.2 GB+")
+    fn format(&self) -> String {
+        if self.unknown_count > 0 {
+            format!("{}+", format_size(self.known_size))
+        } else {
+            format_size(self.known_size)
+        }
+    }
+}
+
 async fn process_download_task(
     client: &Client,
     task: &DownloadTask,
@@ -102,7 +136,7 @@ async fn process_download_task(
     Ok(())
 }
 
-pub async fn install_cuda_version(version: &str) -> Result<()> {
+pub async fn install_cuda_version(version: &CudaVersion) -> Result<()> {
     let mp = MultiProgress::new();
 
     let platform = target_platform()?;
@@ -113,7 +147,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
     let available_versions = fetch_available_cuda_versions().await?;
     check_spinner.finish_and_clear();
 
-    if !available_versions.contains(version) {
+    if !available_versions.contains(version.as_str()) {
         bail!(
             "CUDA version {} is not available. Use 'cudup list' to see available versions.",
             version
@@ -121,7 +155,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
     }
     info!("Version {} available", version);
 
-    let install_dir = version_install_dir(version)?;
+    let install_dir = version_install_dir(version.as_str())?;
     if install_dir.exists() {
         bail!(
             "CUDA {} is already installed at {}",
@@ -134,7 +168,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
 
     // Fetch CUDA metadata
     let meta_spinner = create_spinner(&mp, format!("Fetching CUDA {} metadata...", version));
-    let cuda_metadata = fetch_cuda_version_metadata(version).await?;
+    let cuda_metadata = fetch_cuda_version_metadata(version.as_str()).await?;
     let cuda_tasks = collect_cuda_download_tasks(&cuda_metadata, version, platform);
     meta_spinner.finish_and_clear();
 
@@ -147,22 +181,8 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
         );
     }
 
-    let cuda_known_size: u64 = cuda_tasks.iter().filter_map(|t| t.size).sum();
-    let cuda_unknown_count = cuda_tasks.iter().filter(|t| t.size.is_none()).count();
-    if cuda_unknown_count > 0 {
-        info!(
-            "Found {} CUDA packages ({}+, {} with unknown size)",
-            cuda_tasks.len(),
-            format_size(cuda_known_size),
-            cuda_unknown_count
-        );
-    } else {
-        info!(
-            "Found {} CUDA packages ({})",
-            cuda_tasks.len(),
-            format_size(cuda_known_size)
-        );
-    }
+    let cuda_stats = SizeStats::from_tasks(&cuda_tasks);
+    info!("Found {} CUDA packages ({})", cuda_tasks.len(), cuda_stats.format());
 
     // Find compatible cuDNN
     let cudnn_spinner = create_spinner(&mp, "Finding compatible cuDNN version...".to_string());
@@ -181,26 +201,18 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
         }
     };
 
-    let cudnn_known_size: u64 = cudnn_task.as_ref().and_then(|t| t.size).unwrap_or(0);
-    let cudnn_unknown = cudnn_task.as_ref().is_some_and(|t| t.size.is_none());
-    let total_known_size = cuda_known_size + cudnn_known_size;
-    let total_unknown_count = cuda_unknown_count + usize::from(cudnn_unknown);
+    let cudnn_stats = cudnn_task
+        .as_ref()
+        .map(|t| SizeStats::from_tasks(std::slice::from_ref(t)))
+        .unwrap_or(SizeStats { known_size: 0, unknown_count: 0 });
+    let total_stats = cuda_stats.combine(&cudnn_stats);
     let total_packages = cuda_tasks.len() + usize::from(cudnn_task.is_some());
 
-    if total_unknown_count > 0 {
-        info!(
-            "Downloading {} packages ({}+, {} with unknown size)",
-            total_packages,
-            format_size(total_known_size),
-            total_unknown_count
-        );
-    } else {
-        info!(
-            "Downloading {} packages ({})",
-            total_packages,
-            format_size(total_known_size)
-        );
-    }
+    info!(
+        "Downloading {} packages ({})",
+        total_packages,
+        total_stats.format()
+    );
 
     // Create directories
     let downloads = config::downloads_dir()?;
