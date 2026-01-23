@@ -1,9 +1,28 @@
-use anyhow::Result;
+use anyhow::{Result, bail};
 use std::path::PathBuf;
 
 use crate::config;
 
-pub const TARGET_PLATFORM: &str = "linux-x86_64";
+/// Returns the NVIDIA redistributable platform string for the current system.
+///
+/// Supported platforms:
+/// - `linux-x86_64` - Linux on x86_64
+/// - `linux-sbsa` - Linux on ARM64 (Server Base System Architecture)
+///
+/// Note: `linux-aarch64` (Jetson/embedded) is not supported.
+/// Use NVIDIA JetPack SDK for Jetson devices.
+pub fn target_platform() -> Result<&'static str> {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("linux", "x86_64") => Ok("linux-x86_64"),
+        ("linux", "aarch64") => Ok("linux-sbsa"),
+        (os, arch) => bail!(
+            "Unsupported platform: {}-{}. \
+             cudup supports linux-x86_64 and linux-sbsa (ARM64 server).",
+            os,
+            arch
+        ),
+    }
+}
 
 pub fn version_install_dir(cuda_version: &str) -> Result<PathBuf> {
     Ok(config::versions_dir()?.join(cuda_version))
@@ -63,5 +82,30 @@ mod tests {
         assert!(dir.to_string_lossy().contains("12.4.1"));
         assert!(dir.to_string_lossy().contains(".cudup"));
         assert!(dir.to_string_lossy().contains("versions"));
+    }
+
+    #[test]
+    fn test_target_platform() {
+        let result = target_platform();
+
+        match (std::env::consts::OS, std::env::consts::ARCH) {
+            ("linux", "x86_64") => {
+                assert_eq!(result.unwrap(), "linux-x86_64");
+            }
+            ("linux", "aarch64") => {
+                assert_eq!(result.unwrap(), "linux-sbsa");
+            }
+            (os, arch) => {
+                // On unsupported platforms (like macOS), it should return an error
+                let err = result.unwrap_err();
+                assert!(
+                    err.to_string().contains("Unsupported platform"),
+                    "Expected 'Unsupported platform' error for {}-{}, got: {}",
+                    os,
+                    arch,
+                    err
+                );
+            }
+        }
     }
 }

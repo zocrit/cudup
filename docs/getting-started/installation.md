@@ -3,8 +3,13 @@
 ## Prerequisites
 
 - Linux (Ubuntu 20.04+, Debian 11+)
-- x86_64 architecture
+- x86_64 or ARM64 (SBSA) architecture
 - ~10GB disk space per CUDA version
+
+!!! note "ARM64 Support"
+    cudup supports ARM64 servers using NVIDIA's SBSA (Server Base System Architecture) builds.
+    This includes NVIDIA Grace Hopper, AWS Graviton with NVIDIA GPUs, and similar server platforms.
+    Jetson devices are not supported - use NVIDIA JetPack SDK instead.
 
 ## Install cudup
 

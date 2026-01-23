@@ -47,7 +47,7 @@ Managing these manually is painful. `cudup` makes it trivial.
 ## System Requirements
 
 - **OS:** Linux (Ubuntu 20.04+, Debian 11+)
-- **Architecture:** x86_64
+- **Architecture:** x86_64, ARM64 (SBSA)
 - **Disk Space:** ~10GB per CUDA version
 
 ## Status

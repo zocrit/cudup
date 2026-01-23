@@ -39,6 +39,7 @@ Track development progress as features are implemented.
 - [ ] Global vs local version modes (`cudup global`)
 - [ ] Import existing installations (`cudup import`)
 - [ ] Export/import environments
+- [x] Multi-architecture support (x86_64, ARM64/SBSA)
 - [ ] Multi-distro support (RHEL, CentOS, Fedora)
 - [ ] Performance optimizations (parallel downloads)
 - [ ] Comprehensive documentation

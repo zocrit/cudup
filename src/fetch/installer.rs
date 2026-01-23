@@ -23,7 +23,7 @@ use super::extract::extract_tarball;
 use super::tasks::{
     collect_cuda_download_tasks, collect_cudnn_download_task, find_compatible_cudnn,
 };
-use super::utils::{format_size, version_install_dir};
+use super::utils::{format_size, target_platform, version_install_dir};
 use super::verify::verify_checksum;
 use crate::config;
 
@@ -89,6 +89,9 @@ async fn process_download_task(
 pub async fn install_cuda_version(version: &str) -> Result<()> {
     let mp = MultiProgress::new();
 
+    let platform = target_platform()?;
+    info!("Detected platform: {}", platform);
+
     // Check version availability
     let check_spinner = create_spinner(&mp, "Checking available versions...".to_string());
     let available_versions = fetch_available_cuda_versions().await?;
@@ -116,9 +119,19 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
     // Fetch CUDA metadata
     let meta_spinner = create_spinner(&mp, format!("Fetching CUDA {} metadata...", version));
     let cuda_metadata = fetch_cuda_version_metadata(version).await?;
-    let cuda_tasks = collect_cuda_download_tasks(&cuda_metadata, version);
-    let cuda_total_size: u64 = cuda_tasks.iter().map(|t| t.size).sum();
+    let cuda_tasks = collect_cuda_download_tasks(&cuda_metadata, version, platform);
     meta_spinner.finish_and_clear();
+
+    if cuda_tasks.is_empty() {
+        bail!(
+            "CUDA {} has no downloadable packages for platform {}. \
+             This version may not support your architecture.",
+            version,
+            platform
+        );
+    }
+
+    let cuda_total_size: u64 = cuda_tasks.iter().map(|t| t.size).sum();
     info!(
         "Found {} CUDA packages ({})",
         cuda_tasks.len(),
@@ -134,7 +147,7 @@ pub async fn install_cuda_version(version: &str) -> Result<()> {
         Some((cudnn_version, cuda_variant)) => {
             info!("Found cuDNN {} ({})", cudnn_version, cuda_variant);
             let cudnn_metadata = fetch_cudnn_version_metadata(&cudnn_version).await?;
-            collect_cudnn_download_task(&cudnn_metadata, &cuda_variant)
+            collect_cudnn_download_task(&cudnn_metadata, &cuda_variant, platform)
         }
         None => {
             warn!("No compatible cuDNN found for CUDA {}", version);
