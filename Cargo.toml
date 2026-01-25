@@ -5,7 +5,7 @@ tempfile = "3"
 wiremock = "0.6"
 [package]
 name = "cudup"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Cristian Zoz <cristian@zoz.dev>"]
 license = "MIT"
 repository = "https://github.com/ZoCrit/cudup"
