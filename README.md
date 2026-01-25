@@ -74,7 +74,7 @@ Track development progress as features are implemented:
 - [x] Enhanced diagnostics (runtime checks, GPU detection)
 - [x] Progress bars and colored output
 - [x] Show cudup version (`cudup --version`)
-- [ ] Checksum verification (SHA256 integrity checks)
+- [x] Checksum verification (SHA256 integrity checks)
 - [ ] Resumable downloads for large installers
 - [ ] Pre-flight compatibility checking (GPU driver, compute capability)
 
@@ -91,6 +91,7 @@ Track development progress as features are implemented:
 - [ ] Global vs local version modes (`cudup global`)
 - [ ] Import existing installations (`cudup import`)
 - [ ] Export/import environments
+- [x] Multi-architecture support (x86_64, ARM64/SBSA)
 - [ ] Multi-distro support (RHEL, CentOS, Fedora)
 - [ ] Performance optimizations (parallel downloads)
 - [ ] Comprehensive documentation
@@ -105,7 +106,7 @@ Track development progress as features are implemented:
 ## System Requirements
 
 - **OS:** Linux (Ubuntu 20.04+, Debian 11+)
-- **Architecture:** x86_64
+- **Architecture:** x86_64, ARM64 (SBSA)
 - **Disk Space:** ~10GB per CUDA version
 
 ## Documentation

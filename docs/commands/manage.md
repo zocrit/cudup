@@ -14,6 +14,7 @@ cudup manage <COMMAND>
 |---------|-------------|
 | `setup` | Configure shell integration |
 | `remove` | Remove shell integration |
+| `self-update` | Update cudup to the latest version |
 
 ---
 
@@ -89,3 +90,30 @@ Updated /home/you/.zshrc
 
 Removal complete!
 ```
+
+---
+
+## cudup manage self-update
+
+Update cudup to the latest version.
+
+!!! warning "Not Yet Implemented"
+    This command is planned but not yet functional.
+
+### Usage
+
+```bash
+cudup manage self-update [OPTIONS]
+```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `--check` | Check for updates without installing |
+
+### Planned Features
+
+- Download and install the latest cudup binary from GitHub releases
+- Verify binary integrity with cryptographic signatures
+- Check for updates without installing (`--check` flag)
