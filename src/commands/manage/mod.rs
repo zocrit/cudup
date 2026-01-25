@@ -1,4 +1,5 @@
 mod remove;
+mod self_update;
 mod setup;
 
 use anyhow::{Context, Result, bail};
@@ -9,6 +10,7 @@ use crate::config::cudup_home;
 pub use crate::config::prompt_confirmation;
 
 pub use remove::remove;
+pub use self_update::self_update;
 pub use setup::setup;
 
 const BASH_ZSH_ENV: &str = r#"# cudup shell integration

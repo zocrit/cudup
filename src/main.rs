@@ -59,6 +59,10 @@ enum Commands {
 enum ManageCommand {
     Setup,
     Remove,
+    SelfUpdate {
+        #[arg(long)]
+        check: bool,
+    },
 }
 
 #[tokio::main]
@@ -90,6 +94,7 @@ async fn main() -> Result<()> {
         Commands::Manage { command } => match command {
             ManageCommand::Setup => commands::setup()?,
             ManageCommand::Remove => commands::remove()?,
+            ManageCommand::SelfUpdate { check } => commands::self_update(*check).await?,
         },
     }
 
