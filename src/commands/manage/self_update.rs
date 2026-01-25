@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 const GITHUB_REPO_OWNER: &str = "zocrit";
 const GITHUB_REPO_NAME: &str = "cudup";
-const MINISIGN_PUBLIC_KEY: &str = "RWTyltsSlcawbHBMaqUQohzRJhKULC+lfhJyz27neU4blwpsGbcRrF3o";
+const MINISIGN_PUBLIC_KEY: &str = "RWRaCjVfBEmbvde4Ryx44f/lIIprqvxvlf1/9eoAdHYVEmyJdP9e1+Wz";
 const BINARY_NAME_TEMPLATE: &str = "cudup-{target}";
 const DEFAULT_TARGET: &str = "x86_64-unknown-linux-musl";
 
