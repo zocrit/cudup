@@ -136,11 +136,11 @@ jobs:
           echo "$MINISIGN_SECRET_KEY" > minisign.key
           trap 'rm -f minisign.key' EXIT
 
-          # Sign each binary (-W skips password prompt)
+          # Sign each binary (pipe empty password for key with no password)
           for binary in cudup-x86_64-* cudup-aarch64-*; do
             [ -f "$binary" ] || continue
             echo "Signing $binary..."
-            minisign -W -S -s minisign.key -m "$binary" -t "cudup release signature"
+            echo "" | minisign -S -s minisign.key -m "$binary" -t "cudup release signature"
           done
 
           # Generate SHA256 checksums for binaries and signatures
@@ -149,7 +149,7 @@ jobs:
           cat cudup-checksums.sha256
 
           # Sign the checksums file
-          minisign -W -S -s minisign.key -m cudup-checksums.sha256 -t "cudup checksums signature"
+          echo "" | minisign -S -s minisign.key -m cudup-checksums.sha256 -t "cudup checksums signature"
 
           echo "Release files:"
           ls -la
