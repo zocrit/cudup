@@ -6,7 +6,7 @@ Easily install and switch between CUDA versions on Linux.
 
 ## Status
 
-**Early Development** - Not yet ready for production use.
+**Early Development** - This is not ready to be used safely yet.
 
 ## What is cudup?
 
@@ -64,10 +64,12 @@ Track development progress as features are implemented:
 - [x] Shell integration (`cudup manage setup`)
 - [x] Health diagnostics (`cudup check`)
 - [x] Basic error handling and user-friendly messages
-- [ ] Linux support (Ubuntu/Debian) - testing in progress
+- [x] Linux support (Ubuntu/Debian)
 
 ### v0.5 - Enhanced Experience
 - [ ] Per-project `.cuda-version` files (`cudup local`)
+- [ ] Parallel downloads (async/multithread hybrid for download/install steps?)
+- [ ] Show current version (`cudup current`)
 - [x] Automatic cuDNN version matching
 - [x] Uninstall versions (`cudup uninstall`)
 - [ ] Clean up old versions (`cudup clean`)

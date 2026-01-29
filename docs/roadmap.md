@@ -15,6 +15,7 @@ Track development progress as features are implemented.
 ## v0.5 - Enhanced Experience
 
 - [ ] Per-project `.cuda-version` files (`cudup local`)
+- [ ] Show current version (`cudup current`)
 - [x] Automatic cuDNN version matching
 - [x] Uninstall versions (`cudup uninstall`)
 - [ ] Clean up old versions (`cudup clean`)
