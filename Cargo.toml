@@ -2,9 +2,10 @@
 assert_cmd = "2"
 predicates = "3"
 tempfile = "3"
+wiremock = "0.6"
 [package]
 name = "cudup"
-version = "0.1.0"
+version = "0.2.2"
 authors = ["Cristian Zoz <cristian@zoz.dev>"]
 license = "MIT"
 repository = "https://github.com/ZoCrit/cudup"
@@ -15,6 +16,21 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.100"
+log = "0.4"
+env_logger = "0.11"
 clap = { version = "4.5.53", features = ["derive"] }
+dirs = "6.0"
+futures = "0.3.31"
+regex = "1.11"
+reqwest = { version = "0.12.28", default-features = false, features = ["blocking", "json", "stream", "rustls-tls"] }
 serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.148"
+sha2 = "0.10"
+tokio = { version = "1.48.0", features = ["rt-multi-thread", "macros", "time", "fs", "io-util", "process", "sync"] }
 toml = "0.9.10"
+indicatif = "0.17"
+minisign-verify = "0.2.4"
+
+[profile.release]
+codegen-units = 1
+lto = true # FullLTO - the most aggressive LTO version

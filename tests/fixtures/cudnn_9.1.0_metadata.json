@@ -1,0 +1,40 @@
+{
+    "release_date": "2024-05-15",
+    "release_label": "9.1.0",
+    "release_product": "cudnn",
+    "cudnn": {
+        "name": "cuDNN",
+        "license": "NVIDIA cuDNN Software License",
+        "license_path": "cudnn/LICENSE.txt",
+        "version": "9.1.0.70",
+        "cuda_variant": ["11", "12"],
+        "linux-x86_64": {
+            "cuda11": {
+                "relative_path": "cudnn/linux-x86_64/cudnn-linux-x86_64-9.1.0.70_cuda11-archive.tar.xz",
+                "sha256": "cudnn11sha256hash012345678901234567890123456789012345678901234567",
+                "md5": "cudnn11md5hash",
+                "size": "987654321"
+            },
+            "cuda12": {
+                "relative_path": "cudnn/linux-x86_64/cudnn-linux-x86_64-9.1.0.70_cuda12-archive.tar.xz",
+                "sha256": "cudnn12sha256hash012345678901234567890123456789012345678901234567",
+                "md5": "cudnn12md5hash",
+                "size": "987654322"
+            }
+        },
+        "windows-x86_64": {
+            "cuda11": {
+                "relative_path": "cudnn/windows-x86_64/cudnn-windows-x86_64-9.1.0.70_cuda11-archive.zip",
+                "sha256": "cudnnwin11sha256hash01234567890123456789012345678901234567890123",
+                "md5": "cudnnwin11md5",
+                "size": "123456789"
+            },
+            "cuda12": {
+                "relative_path": "cudnn/windows-x86_64/cudnn-windows-x86_64-9.1.0.70_cuda12-archive.zip",
+                "sha256": "cudnnwin12sha256hash01234567890123456789012345678901234567890123",
+                "md5": "cudnnwin12md5",
+                "size": "123456790"
+            }
+        }
+    }
+}
