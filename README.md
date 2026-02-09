@@ -121,7 +121,7 @@ Full documentation available at **[zocrit.github.io/cudup](https://zocrit.github
 
 ## Contributing
 
-Contributions are welcome! This project is in early development, and we'd love your help.
+Contributions are very welcome! This project is in early development, and we'd love your help.
 
 Please check the [roadmap](#roadmap) above for planned features, and feel free to:
 - Report bugs via [GitHub Issues](https://github.com/ZoCrit/cudup/issues)
