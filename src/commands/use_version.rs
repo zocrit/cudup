@@ -9,9 +9,7 @@ pub fn use_version(version: &str) -> Result<()> {
     }
 
     println!("# CUDA {} activated", version);
-    println!("export CUDA_HOME=\"{}\"", install_dir.display());
-    println!("export PATH=\"$CUDA_HOME/bin${{PATH:+:$PATH}}\"");
-    println!("export LD_LIBRARY_PATH=\"$CUDA_HOME/lib64${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}\"");
+    super::print_shell_exports(&install_dir);
 
     Ok(())
 }

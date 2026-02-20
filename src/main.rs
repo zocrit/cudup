@@ -49,6 +49,14 @@ enum Commands {
         )]
         version: CudaVersion,
     },
+    Local {
+        #[arg(
+            help = "CUDA version to set in .cuda-version",
+            value_name = "VERSION",
+            value_parser = clap::value_parser!(CudaVersion)
+        )]
+        version: Option<CudaVersion>,
+    },
     Manage {
         #[command(subcommand)]
         command: ManageCommand,
@@ -87,6 +95,10 @@ async fn main() -> Result<()> {
         Commands::List => commands::list_available_versions().await?,
         Commands::Check => commands::check()?,
         Commands::Use { version } => commands::use_version(version.as_str())?,
+        Commands::Local { version } => match version {
+            Some(v) => commands::local_write(v)?,
+            None => commands::local_activate()?,
+        },
         Commands::Manage { command } => match command {
             ManageCommand::Setup => commands::setup()?,
             ManageCommand::Remove => commands::remove()?,
