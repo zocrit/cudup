@@ -15,6 +15,8 @@ const BASH_ZSH_ENV: &str = r#"# cudup shell integration
 cudup() {
     if [[ "$1" == "use" ]]; then
         eval "$(command cudup use "${@:2}")"
+    elif [[ "$1" == "local" && $# -eq 1 ]]; then
+        eval "$(command cudup local)"
     else
         command cudup "$@"
     fi
@@ -25,6 +27,8 @@ const FISH_ENV: &str = r#"# cudup shell integration
 function cudup
     if test (count $argv) -gt 0 && test "$argv[1]" = "use"
         eval (command cudup use $argv[2..])
+    else if test (count $argv) -eq 1 && test "$argv[1]" = "local"
+        eval (command cudup local)
     else
         command cudup $argv
     end
