@@ -1,6 +1,6 @@
 [package]
 name = "cudup"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Cristian Zoz <cristian@zoz.dev>"]
 license = "MIT"
 repository = "https://github.com/ZoCrit/cudup"
