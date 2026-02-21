@@ -9,4 +9,5 @@ cudup provides the following commands:
 | [`list`](list.md) | List available CUDA versions |
 | [`use`](use.md) | Activate a CUDA version |
 | [`check`](check.md) | Verify cudup configuration |
+| [`local`](local.md) | Use project-local CUDA version |
 | [`manage`](manage.md) | Manage cudup installation |

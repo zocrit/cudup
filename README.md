@@ -30,7 +30,7 @@ Track development progress as features are implemented:
 - [x] Linux support (Ubuntu/Debian)
 
 ### v0.5
-- [ ] Per-project `.cuda-version` files (`cudup local`)
+- [x] Per-project `.cuda-version` files (`cudup local`)
 - [ ] Parallel downloads (async/multithread hybrid for download/install steps?)
 - [ ] Show current version (`cudup current`)
 - [x] Automatic cuDNN version matching
